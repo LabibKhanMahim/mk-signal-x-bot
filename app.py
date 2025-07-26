@@ -16,11 +16,13 @@ import os # Added for environment variables
 app = Flask(__name__)
 # CORS Configuration: Allowing specific origins for production.
 # IMPORTANT: Replace the origins below with your actual frontend and backend URLs on Render.
-# If your frontend is at https://mk-signal-x-bot.onrender.com, and backend is at https://mk-signal-x-bot-1.onrender.com, include both.
+# Based on your error log, your frontend is mk-signal-x-bot.onrender.com
+# and your backend is mk-signal-x-bot-1.onrender.com
 CORS(app, resources={r"/api/*": {"origins": [
-    "https://mk-signal-x-bot.onrender.com", # Your frontend URL
-    "https://mk-signal-x-bot-1.onrender.com", # Your backend URL (if different from frontend)
-    "http://localhost:8000" # For local testing
+    "https://mk-signal-x-bot.onrender.com",    # Your frontend URL
+    "https://mk-signal-x-bot-1.onrender.com",  # Your backend URL (if different from frontend)
+    "http://localhost:8000",                   # For local testing
+    "http://127.0.0.1:5000"                    # Another common local testing address
 ]}})
 
 # Global variables to store signals and their last generation time
