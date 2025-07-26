@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MK SIGNAL X BOT - AI Trading Signals</title>
+    <!-- Favicon added - supporting various formats and sizes -->
+    <link rel="icon" href="{{ url_for('static', filename='20250720_1651_Neon Trading Bot Icon_simple_compose_01k0kq9ez5ebvsy9mgnd0sydrr (1).png') }}" type="image/png">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='20250720_1651_Neon Trading Bot Icon_simple_compose_01k0kq9ez5ebvsy9mgnd0sydrr (1).png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='20250720_1651_Neon Trading Bot Icon_simple_compose_01k0kq9ez5ebvsy9mgnd0sydrr (1).png') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='20250720_1651_Neon Trading Bot Icon_simple_compose_01k0kq9ez5ebvsy9mgnd0sydrr (1).png') }}" type="image/x-icon">
+    <!-- Apple Touch Icon for iOS devices -->
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='20250720_1651_Neon Trading Bot Icon_simple_compose_01k0kq9ez5ebvsy9mgnd0sydrr (1).png') }}">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for social icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Tone.js for sound generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0d; /* Deep dark background */
+            color: #e0e0e0; /* Light grey text */
+            overflow: hidden; /* Prevent scrolling during onboarding/login */
+            position: relative;
+        }
+
+        /* Global Image Background for Onboarding/Login */
+        .background-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures image covers the entire screen */
+            z-index: -2; /* Below overlay */
+            filter: blur(3px); /* Slight blur */
+        }
+
+        /* Global Dark Overlay for Image Background */
+        .image-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6); /* Dark overlay */
+            backdrop-filter: blur(2px); /* Additional blur for glassmorphic effect */
+            -webkit-backdrop-filter: blur(2px); /* For Safari */
+            z-index: -1; /* Above image, below content */
+        }
+
+        /* Video Background for Main Interface */
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures video covers the entire screen */
+            z-index: -2; /* Below overlay */
+            filter: blur(3px); /* Slight blur */
+        }
+
+        /* Dark Overlay for Video Background */
+        .video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6); /* Dark overlay */
+            backdrop-filter: blur(2px); /* Additional blur for glassmorphic effect */
+            -webkit-backdrop-filter: blur(2px); /* For Safari */
+            z-index: -1; /* Above video, below content */
+        }
+
+        /* Onboarding/Login Container */
+        #onboarding-container, #login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10000; /* Ensure it's on top */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* Hide any overflow from transitions */
+        }
+
+        /* Glassmorphic Panel */
+        .glassmorphic-panel {
+            background: rgba(255, 255, 255, 0.08); /* Translucent background */
+            backdrop-filter: blur(10px); /* Frosted glass effect */
+            -webkit-backdrop-filter: blur(10px); /* For Safari */
+            border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle white border */
+            border-radius: 1.5rem;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.7), inset 0 0 20px rgba(217, 70, 182, 0.5); /* Neon blue and violet glows */
+            padding: 2.5rem;
+            max-width: 700px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            transform: scale(0.95); /* Initial slightly smaller state */
+            opacity: 0; /* Initially hidden */
+            transition: transform 0.4s ease-out, opacity 0.4s ease-out; /* Faster transition */
+            will-change: transform, opacity, box-shadow, backdrop-filter;
+            max-height: 90%; /* Limit height for responsiveness */
+            overflow-y: auto; /* Enable scrolling if content overflows */
+        }
+        .glassmorphic-panel.active {
+            transform: scale(1);
+            opacity: 1;
+            animation: panel-pulse 2.5s infinite alternate; /* Add pulse animation */
+        }
+
+        @keyframes panel-pulse {
+            0% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.7), inset 0 0 20px rgba(217, 70, 182, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.9), inset 0 0 30px rgba(217, 70, 182, 0.7), 0 0 40px rgba(168, 85, 247, 0.6); }
+            100% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.7), inset 0 0 20px rgba(217, 70, 182, 0.5); }
+        }
+
+        /* Onboarding/Login Title */
+        .screen-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #06b6d4; /* Cyan */
+            margin-bottom: 1.5rem;
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.6); /* Stronger glow */
+            opacity: 0; /* For fade-in */
+            transform: translateY(-20px); /* For slide-in */
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out, text-shadow 0.2s ease-in-out; /* Faster transitions */
+            will-change: opacity, transform, text-shadow;
+        }
+
+        /* Onboarding Content */
+        .onboarding-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #e0e0e0;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .onboarding-content p, .onboarding-content ul li {
+            margin-bottom: 0.8rem;
+        }
+
+        .onboarding-content strong {
+            color: #d946b6; /* Magenta for strong text */
+            text-shadow: 0 0 5px rgba(217, 70, 182, 0.5);
+        }
+
+        .onboarding-content ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .onboarding-content ul li::before {
+            content: '•';
+            color: #06b6d4; /* Cyan bullet */
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        /* Text Animation - Typing Effect */
+        .typing-char {
+            opacity: 0;
+            transform: translateY(5px);
+            transition: opacity 0.05s ease-out, transform 0.05s ease-out; /* Very fast for typing */
+            will-change: opacity, transform;
+        }
+
+        /* Text Animation - Fade-in Bullet/Paragraph */
+        .fade-in-element {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out; /* Controlled fade-in */
+            will-change: opacity, transform;
+        }
+
+        /* Emoji pulse animation */
+        @keyframes emoji-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        .emoji-pulse {
+            display: inline-block;
+            animation: emoji-pulse 1s infinite ease-in-out; /* Faster pulse */
+            will-change: transform, opacity;
+        }
+
+        /* Onboarding/Login Button */
+        .action-button {
+            padding: 0.8rem 2.5rem;
+            border-radius: 9999px; /* Full rounded */
+            font-weight: 600;
+            font-size: 1.1rem;
+            background: linear-gradient(45deg, #a855f7, #d946b6); /* Purple to Magenta */
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+            animation: button-glow-pulse 2s infinite alternate; /* Add button pulse */
+            position: relative; /* For ripple effect */
+            overflow: hidden; /* For ripple effect */
+            z-index: 1; /* For ripple effect */
+            will-change: transform, box-shadow;
+        }
+
+        .action-button:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.8), 0 0 40px rgba(217, 70, 182, 0.8);
+        }
+
+        @keyframes button-glow-pulse {
+            0% { box-shadow: 0 0 15px rgba(168, 85, 247, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(168, 85, 247, 0.8), 0 0 35px rgba(217, 70, 182, 0.6); }
+            100% { box-shadow: 0 0 15px rgba(168, 85, 247, 0.5); }
+        }
+
+        /* Ripple effect for buttons */
+        .action-button .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            animation: ripple-effect 0.6s linear;
+            transform: scale(0);
+            pointer-events: none;
+            z-index: 0;
+            will-change: transform, opacity;
+        }
+
+        @keyframes ripple-effect {
+            to {
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+
+        /* Page transition animations */
+        .slide-out-left {
+            animation: slideOutLeft 0.5s ease-out forwards; /* Faster */
+            will-change: transform, opacity, filter;
+        }
+        .slide-in-right {
+            animation: slideInRight 0.5s ease-out forwards; /* Faster */
+            will-change: transform, opacity, filter;
+        }
+
+        @keyframes slideOutLeft {
+            from { transform: translateX(0); opacity: 1; filter: blur(0); }
+            to { transform: translateX(-100%); opacity: 0; filter: blur(5px); }
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; filter: blur(5px); }
+            to { transform: translateX(0); opacity: 1; filter: blur(0); }
+        }
+
+        /* Final transition animation */
+        @keyframes fade-scale-in {
+            0% { opacity: 0; transform: scale(0.8); filter: blur(10px); }
+            100% { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+
+        /* Lock icon animation for final transition */
+        @keyframes lock-open-rotate {
+            0% { transform: rotateY(0deg); opacity: 1; }
+            50% { transform: rotateY(90deg); opacity: 0.5; }
+            100% { transform: rotateY(180deg); opacity: 0; }
+        }
+        .lock-icon-anim {
+            animation: lock-open-rotate 0.6s ease-in-out forwards; /* Faster lock animation */
+            will-change: transform, opacity;
+        }
+
+        /* Error Alert */
+        #error-alert {
+            background-color: rgba(239, 68, 68, 0.9); /* Red */
+            color: white;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-top: 1.5rem;
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
+            animation: error-flicker 0.5s infinite alternate;
+            will-change: transform, opacity, box-shadow;
+        }
+        #error-alert.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        @keyframes error-flicker {
+            0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 25px rgba(239, 68, 68, 1); }
+        }
+        /* CSS for shake animation */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+
+        /* Vault Unlock Animation */
+        #vault-unlock-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(6, 182, 212, 0.1) 0%, rgba(0,0,0,0.9) 70%);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10001; /* Above login container */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease-out, visibility 0s linear 0.5s;
+            will-change: opacity, visibility, backdrop-filter;
+        }
+        #vault-unlock-overlay.active {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.5s ease-in, visibility 0s linear 0s;
+        }
+
+        .vault-icon {
+            font-size: 6rem;
+            color: #06b6d4; /* Cyan */
+            text-shadow: 0 0 20px #06b6d4, 0 0 40px #06b6d4;
+            animation: vault-open-pulse 1.5s infinite alternate;
+            will-change: transform, text-shadow;
+        }
+        @keyframes vault-open-pulse {
+            0% { transform: scale(1); text-shadow: 0 0 20px #06b6d4, 0 0 40px #06b6d4; }
+            50% { transform: scale(1.1); text-shadow: 0 0 30px #06b6d4, 0 0 60px #06b6d4, 0 0 80px #a855f7; }
+            100% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.7), inset 0 0 20px rgba(217, 70, 182, 0.5); }
+        }
+
+        .vault-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #e0e0e0;
+            margin-top: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fade-slide-in 0.8s ease-out forwards;
+            animation-delay: 0.3s;
+            will-change: transform, opacity;
+        }
+        @keyframes fade-slide-in {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* General UI elements for Dashboard */
+        .neon-glow-purple { box-shadow: 0 0 10px #a855f7, 0 0 20px #a855f7, 0 0 30px #a855f7, 0 0 40px #a855f7; }
+        .neon-glow-cyan { box-shadow: 0 0 10px #06b6d4, 0 0 20px #06b6d4, 0 0 30px #06b6d4, 0 0 40px #06b6d4; }
+        .neon-glow-magenta { box-shadow: 0 0 10px #d946b6, 0 0 20px #d946b6, 0 0 30px #d946b6, 0 0 40px #d946b6; }
+        .neon-glow-green { box-shadow: 0 0 8px #22c55e, 0 0 16px #22c55e, 0 0 24px #22c55e; }
+        .neon-glow-red { box-shadow: 0 0 8px #ef4444, 0 0 16px #ef4444, 0 0 24px #ef4444; }
+        .neon-glow-yellow { box-shadow: 0 0 8px #eab308, 0 0 16px #eab308, 0 0 24px #eab308; }
+        @keyframes glitch {
+            0% { text-shadow: 0.05em 0 0 #06b6d4, -0.05em -0.025em 0 #d946b6, -0.025em 0.05em 0 #a855f7; }
+            14% { text-shadow: -0.05em -0.025em 0 #06b6d4, 0.025em 0.025em 0 #d946b6, 0.05em -0.05em 0 #a855f7; }
+            15% { text-shadow: 0.025em 0.05em 0 #06b6d4, -0.05em -0.025em 0 #d946b6, 0.05em 0.025em 0 #a855f7; }
+            49% { text-shadow: 0.025em 0.05em 0 #06b6d4, -0.05em -0.025em 0 #d946b6, 0.05em 0.025em 0 #a855f7; }
+            50% { text-shadow: -0.05em 0.05em 0 #06b6d4, -0.025em -0.05em 0 #d946b6, 0.05em 0 0 #a855f7; }
+            99% { text-shadow: -0.05em 0.05em 0 #06b6d4, -0.025em -0.05em 0 #d946b6, 0.05em 0 0 #a855f7; }
+            100% { text-shadow: 0.05em 0 0 #06b6d4, -0.05em -0.025em 0 #d946b6, -0.025em 0.05em 0 #a855f7; }
+        }
+        .glitch-text { animation: glitch 1.5s infinite alternate-reverse; will-change: text-shadow; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .shimmer-effect {
+            background: linear-gradient(90deg, #1a1a1e 0%, #3a3a40 50%, #1a1a1e 100%); background-size: 200% 100%; animation: shimmer 2s infinite linear;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; will-change: background-position;
+        }
+        @keyframes pulse-glow { 0% { text-shadow: 0 0 5px #06b6d4; } 50% { text-shadow: 0 0 15px #06b6d4, 0 0 25px #06b6d4; } 100% { text-shadow: 0 0 5px #06b6d4; } }
+        .pulse-glow-text { animation: pulse-glow 2s infinite ease-in-out; will-change: text-shadow; }
+
+        .signal-card {
+            background-color: #1a1a1e; border: 1px solid transparent; transition: all 0.3s ease-in-out; position: relative; overflow: hidden;
+            border-radius: 1rem; box-shadow: 0 0 10px rgba(0,0,0,0.5); padding: 1.5rem; display: flex; flex-direction: column;
+            justify-content: space-between; min-height: 280px; aspect-ratio: 1 / 1; will-change: transform, box-shadow;
+        }
+        .signal-card:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.7); }
+        .signal-card .text-2xl.font-bold { font-size: 1.1rem; }
+        .signal-card .text-base { font-size: 0.875rem; }
+        .signal-card .text-xl { font-size: 1.25rem; }
+        .signal-card .text-3xl { font-size: 2rem; }
+        .signal-card .signal-reason { font-size: 0.75rem; color: #b0b0b0; margin-top: 0.5rem; max-height: 60px; overflow-y: auto; padding-right: 5px; }
+        .signal-card .flex-col { word-wrap: break-word; overflow-wrap: break-word; }
+
+        .border-glow-green { border-color: #22c55e; } .border-glow-red { border-color: #ef4444; }
+        .border-glow-yellow { border-color: #eab308; } .border-glow-default { border-color: #a855f7; }
+        .border-glow-resting { border-color: #6b7280; }
+
+        .tradingview-widget-container { width: 100%; height: 450px; min-height: 450px; }
+        .left-panel.pulse-glow-animation { animation: pulse-border-glow 3s infinite ease-in-out; will-change: box-shadow; }
+        @keyframes pulse-border-glow {
+            0% { box-shadow: 0 0 10px #a855f7, 0 0 20px #a855f7; }
+            50% { box-shadow: 0 0 20px #a855f7, 0 0 40px #a855f7, 0 0 60px #a855f7; }
+            100% { box-shadow: 0 0 10px #a855f7, 0 0 20px #a855f7; }
+        }
+        .signal-cards-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2.5rem; }
+        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #1a1a1e; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(45deg, #a855f7, #d946b6); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: linear-gradient(45deg, #06b6d4, #a855f7); }
+
+        .floating-panel {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(26, 26, 30, 0.9);
+            border: 1px solid #a855f7; border-radius: 1rem; padding: 1rem; z-index: 1000; display: none; width: 90%;
+            max-width: 400px; box-shadow: 0 0 15px rgba(168, 85, 247, 0.5); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            will-change: transform, backdrop-filter;
+        }
+        @media (max-width: 767px) { .floating-panel { display: block; } .right-panel { display: none; } }
+
+        @keyframes neon-flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% { text-shadow: 0 0 7px #fff, 0 0 10px #fff, 0 0 21px #fff, 0 0 42px #06b6d4, 0 0 82px #06b6d4, 0 0 92px #06b6d4, 0 0 102px #06b6d4, 0 0 151px #06b6d4; color: #e0e0e0; filter: brightness(1.2); }
+            20%, 24%, 55% { text-shadow: none; color: #6b7280; filter: brightness(0.8); }
+        }
+        .flicker-text { animation: neon-flicker 2s infinite alternate; will-change: text-shadow, color, filter; }
+
+        .status-indicator {
+            width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 8px;
+            animation: pulse-status 1.5s infinite ease-in-out; will-change: transform, opacity;
+        }
+        .status-indicator.online { background-color: #22c55e; box-shadow: 0 0 5px #22c55e, 0 0 10px #22c55e; }
+        .status-indicator.offline { background-color: #ef4444; box-shadow: 0 0 5px #ef4444, 0 0 10px #ef4444; }
+        @keyframes pulse-status { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
+
+        @keyframes mk-signal-feed-glow { 0%, 100% { text-shadow: 0 0 5px #d946b6, 0 0 10px #d946b6, 0 0 20px #d946b6; } 50% { text-shadow: 0 0 10px #a855f7, 0 0 20px #a855f7, 0 0 30px #a855f7; } }
+        @keyframes mk-signal-feed-flicker { 0%, 19%, 21%, 23%, 54%, 56%, 100% { opacity: 1; } 20%, 22%, 55% { opacity: 0.8; } }
+        .mk-signal-feed-animated {
+            animation: mk-signal-feed-glow 2s infinite alternate, mk-signal-feed-flicker 3s infinite step-end; font-size: 2.25rem;
+            line-height: 2.5rem; font-weight: 700; color: #d946b6; text-shadow: 0 0 10px #d946b6; will-change: text-shadow, opacity;
+        }
+
+        .mahim-banner {
+            background: linear-gradient(90deg, #a855f7, #d946b6, #06b6d4); background-size: 200% 100%;
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+            animation: mahim-banner-shimmer 4s infinite linear; font-size: 1.25rem; font-weight: 600;
+            padding: 0.5rem 1rem; border-radius: 0.5rem; display: inline-block; box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+            margin-bottom: 1rem; will-change: background-position, box-shadow;
+        }
+        @keyframes mahim-banner-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .mahim-social-links a { transition: all 0.3s ease; will-change: transform; }
+        .mahim-social-links a:hover { transform: scale(1.2); }
+        .signal-reason { font-size: 0.75rem; color: #b0b0b0; margin-top: 0.5rem; max-height: 60px; overflow-y: auto; padding-right: 5px; }
+
+        #new-signal-notification {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background-color: rgba(6, 182, 212, 0.9);
+            color: white; padding: 12px 25px; border-radius: 10px; font-size: 1.1rem; font-weight: 600; z-index: 2000; opacity: 0;
+            transition: all 0.5s ease-out; box-shadow: 0 0 20px rgba(6, 182, 212, 0.7); display: flex; align-items: center; gap: 10px;
+            will-change: transform, opacity;
+        }
+        #new-signal-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        #celebration-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, rgba(168, 85, 247, 0.1) 0%, rgba(0,0,0,0.8) 70%);
+            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 3000; display: flex;
+            flex-direction: column; justify-content: center; align-items: center; opacity: 0; visibility: hidden;
+            transition: opacity 0.5s ease-out, visibility 0s linear 0.5s; will-change: opacity, visibility, backdrop-filter;
+        }
+        #celebration-overlay.active {
+            opacity: 1; visibility: visible; transition: opacity 0.5s ease-in, visibility 0s linear 0s;
+            animation: pulse-background 2s infinite alternate;
+        }
+        @keyframes pulse-background { 0% { background: radial-gradient(circle at center, rgba(168, 85, 247, 0.1) 0%, rgba(0,0,0,0.8) 70%); } 100% { background: radial-gradient(circle at center, rgba(168, 85, 247, 0.3) 0%, rgba(0,0,0,0.9) 70%); } }
+
+        .celebration-text {
+            font-size: 3rem; font-weight: 900; text-align: center; color: transparent; background-clip: text;
+            -webkit-background-clip: text; background-image: linear-gradient(45deg, #ff00ff, #00ffff, #ffcc00);
+            text-shadow: 0 0 10px #ff00ff, 0 0 20px #00ffff, 0 0 30px #ffcc00; animation: zoom-in 0.8s ease-out forwards, screen-shake 0.1s infinite alternate;
+            opacity: 0; will-change: transform, opacity, text-shadow;
+        }
+        .celebration-subtext {
+            font-size: 1.5rem; font-weight: 700; color: #e0e0e0; text-align: center; margin-top: 1rem;
+            text-shadow: 0 0 5px #a855f7; animation: zoom-in 1s ease-out forwards; animation-delay: 0.2s;
+            opacity: 0; will-change: transform, opacity, text-shadow;
+        }
+        @keyframes zoom-in { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes screen-shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); } 25% { transform: translate(-1px, -2px) rotate(-1deg); }
+            50% { transform: translate(-3px, 0px) rotate(1deg); } 75% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -1px) rotate(-1deg); }
+        }
+        .spark-effect {
+            position: absolute; bottom: 0; width: 100%; height: 100%; pointer-events: none;
+            background: radial-gradient(circle at 10% 90%, rgba(255,165,0,0.4) 0%, transparent 10%), radial-gradient(circle at 90% 90%, rgba(255,0,0,0.4) 0%, transparent 10%), radial-gradient(circle at 50% 95%, rgba(255,255,0,0.4) 0%, transparent 10%);
+            background-size: 50px 50px; background-repeat: no-repeat; animation: spark-rise 5s ease-out forwards; opacity: 0; will-change: transform, opacity;
+        }
+        @keyframes spark-rise { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-100%) scale(1.5); opacity: 0; } }
+
+        /* Initially hide the main bot interface */
+        #main-bot-interface {
+            display: none;
+            animation: fade-scale-in 0.8s ease-out forwards; /* Apply fade-scale-in */
+            will-change: opacity, transform, filter;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <!-- Global Background Image and Overlay (for initial load and onboarding) -->
+    <img id="global-background-image" src="{{ url_for('static', filename='44c86da04bb9570dc171071691312427.jpg') }}" alt="Background Image" class="background-image">
+    <div id="global-image-overlay" class="image-overlay"></div>
+
+    <!-- Main Bot Interface's Specific Background (Video) -->
+    <div id="main-bot-background" class="background-animations" style="display: none;">
+        <video id="background-video" autoplay loop muted playsinline class="video-background">
+            <source src="{{ url_for('static', filename='d07f4518902dbea27ddb06b21872d520.mp4') }}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="video-overlay"></div>
+    </div>
+
+    <!-- Onboarding Container -->
+    <div id="onboarding-container">
+        <div id="onboarding-panel" class="glassmorphic-panel">
+            <!-- Content will be injected here by JavaScript -->
+        </div>
+
+        <!-- Sound Toggle Button (Top Right) -->
+        <button id="onboarding-sound-toggle-btn" class="absolute top-4 right-4 px-4 py-2 rounded-full bg-gray-800 text-white text-sm font-semibold shadow-lg hover:bg-gray-700 transition-all duration-300 transform hover:scale-105 z-50">
+            <i class="fas fa-volume-up mr-2"></i> Sound: ON
+        </button>
+    </div>
+
+    <!-- Login Container (Initially hidden, shown after onboarding) -->
+    <div id="login-container" style="display: none;">
+        <div id="login-panel" class="glassmorphic-panel">
+            <h2 id="welcome-message" class="screen-title text-center mb-2"></h2>
+            <div class="login-form">
+                <div class="mb-4">
+                    <label for="email-input" class="block text-gray-300 text-sm font-medium mb-2 text-center">Email Address</label>
+                    <input type="email" id="email-input" class="w-full py-2.5 px-3.5 rounded-md bg-[#2a2a2e] border border-cyan-500 text-white focus:ring-2 focus:ring-cyan-400 placeholder-gray-400" placeholder="your@example.com">
+                </div>
+                <div class="mb-6">
+                    <label for="otp-input" class="block text-gray-300 text-sm font-medium mb-2 text-center">OTP Code</label>
+                    <input type="text" id="otp-input" class="w-full py-2.5 px-3.5 rounded-md bg-[#2a2a2e] border border-cyan-500 text-white focus:ring-2 focus:ring-cyan-400 placeholder-gray-400" placeholder="Enter your OTP">
+                </div>
+                <button id="unlock-access-btn" class="action-button w-full">
+                    <i class="fas fa-lock mr-2"></i> Unlock Access
+                </button>
+                <div id="error-alert" class="text-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i> <span id="error-message"></span>
+                </div>
+            </div>
+            <p class="text-gray-500 text-sm mt-8 pulse-glow-text flicker-text">
+                ⚠️ To get access, message your email to our admin via Facebook:
+                <br>
+                👉 <a href="https://www.facebook.com/mahimkhan.mahimkhan.526" target="_blank" class="text-blue-400 hover:underline">https://www.facebook.com/mahimkhan.mahimkhan.526</a>
+                <br>
+                You will receive a One-Time Code (OTP) to log in.
+            </p>
+        </div>
+    </div>
+
+
+    <!-- New Signal Notification -->
+    <div id="new-signal-notification" class="">
+        <i class="fas fa-bullhorn"></i> <span id="new-signal-text"></span>
+    </div>
+
+    <!-- Celebration Overlay -->
+    <div id="celebration-overlay">
+        <div class="celebration-text">
+            🔥💸 MK BOT JUST WENT BEAST MODE! 💸🔥
+        </div>
+        <div class="celebration-subtext">
+            👑 Unstoppable. Unmatched. Unleashed. 👑
+        </div>
+        <div class="spark-effect"></div>
+    </div>
+
+    <!-- Main Bot Interface (Initially hidden) -->
+    <div id="main-bot-interface" class="min-h-screen flex flex-col items-center p-4 md:p-8 relative z-10">
+        <!-- Header -->
+        <header class="text-center mb-8 w-full">
+            <h1 class="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-cyan-400 to-magenta-500 glitch-text">
+                MK SIGNAL X BOT
+            </h1>
+            <!-- Updated tagline with new text and animation classes -->
+            <p class="text-lg md:text-xl text-gray-400 mt-2 shimmer-effect pulse-glow-text flicker-text">Trade Smart, Not Blind.</p>
+        </header>
+
+        <!-- Control Panel -->
+        <div class="flex flex-wrap justify-center gap-4 mb-8">
+            <button id="voice-toggle-btn" class="px-6 py-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold shadow-lg hover:from-cyan-400 hover:to-blue-400 transition-all duration-300 transform hover:scale-105 neon-glow-cyan">
+                <i class="fas fa-volume-up mr-2"></i> Voice Notifications: ON
+            </button>
+            <button id="dark-mode-toggle-btn" class="px-6 py-3 rounded-full bg-gradient-to-r from-purple-500 to-magenta-500 text-white font-semibold shadow-lg hover:from-purple-400 hover:to-magenta-400 transition-all duration-300 transform hover:scale-105 neon-glow-magenta">
+                <i class="fas fa-moon mr-2"></i> Dark Mode: Default
+            </button>
+            <div class="flex items-center text-gray-400 text-sm">
+                Backend Status: <span id="backend-status" class="status-indicator offline"></span>
+            </div>
+            <!-- Added Logout Button -->
+            <button id="logout-btn" class="px-6 py-3 rounded-full bg-red-600 text-white font-semibold shadow-lg hover:bg-red-700 transition-all duration-300 transform hover:scale-105 neon-glow-red">
+                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+            </button>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="flex flex-col md:flex-row w-full max-w-screen-xl gap-6 mb-8 main-content">
+            <!-- Left Panel: TradingView Chart -->
+            <section class="left-panel flex-1 bg-[#1a1a1e] rounded-2xl p-4 shadow-lg border border-purple-700 neon-glow-purple pulse-glow-animation flex flex-col">
+                <h2 class="text-2xl font-semibold text-cyan-400 mb-4">Live Market Chart</h2>
+                <div class="mb-4">
+                    <label for="currency-pair-select" class="block text-gray-300 text-sm font-medium mb-2">Select Currency Pair:</label>
+                    <select id="currency-pair-select" class="w-full p-2 rounded-md bg-[#2a2a2e] border border-cyan-500 text-white focus:ring-2 focus:ring-cyan-400">
+                        <!-- Updated to include only the specified currency pairs -->
+                        <option value="AUD/USD">AUD/USD</option>
+                        <option value="EUR/JPY">EUR/JPY</option>
+                        <option value="EUR/USD">EUR/USD</option>
+                        <option value="GBP/JPY">GBP/JPY</option>
+                        <option value="GBP/USD">GBP/USD</option>
+                        <option value="NZD/USD">NZD/USD</option>
+                        <option value="USD/BDT">USD/BDT</option>
+                        <option value="USD/BRL">USD/BRL</option>
+                        <option value="USD/CAD">USD/CAD</option>
+                        <option value="USD/CHF">USD/CHF</option>
+                        <option value="USD/JPY">USD/JPY</option>
+                        <option value="USD/ZAR">USD/ZAR</option>
+                    </select>
+                </div>
+                <div class="tradingview-widget-container rounded-lg overflow-hidden flex-grow">
+                    <div id="tradingview_widget" style="height:100%; width:100%;"></div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Signal Cards & History (Desktop View) -->
+            <section class="right-panel flex-[2] bg-[#1a1a1e] rounded-2xl p-4 shadow-lg border border-magenta-700 neon-glow-magenta flex flex-col">
+                <h2 class="text-magenta-400 mb-4 mk-signal-feed-animated">MK SIGNAL FEED</h2>
+                <!-- Added Last Updated Timestamp -->
+                <p id="last-updated-timestamp" class="text-xs text-gray-500 mb-4">Last Updated: N/A</p>
+                <div id="signal-cards-container" class="signal-cards-grid grid grid-cols-1 lg:grid-cols-2 gap-4 flex-grow overflow-y-auto pr-2">
+                    <!-- Signal cards will be injected here by JavaScript -->
+                    <div class="signal-card p-4 rounded-xl border-glow-default col-span-full text-center">
+                        <p class="text-gray-400 text-lg shimmer-effect glitch-text">Signal Analysis in Progress...</p>
+                        <p class="text-gray-500 text-sm mt-2">AI is searching for high-confidence trades. Please wait.</p>
+                        <div class="mt-2 text-center">
+                            <span id="countdown-timer" class="text-3xl font-bold text-cyan-400 shimmer-effect pulse-glow-text">--:--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Signal History (New Feature) -->
+                <h3 class="text-xl font-semibold text-purple-400 mt-6 mb-3">Signal History</h3>
+                <div id="signal-history-container" class="bg-[#0e0e11] rounded-lg p-3 border border-purple-600 overflow-y-auto max-h-48 text-sm">
+                    <!-- History items will be injected here -->
+                    <p class="text-gray-500 text-center">No history yet.</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Floating Panel for Mobile (shows only the next signal) -->
+        <div id="mobile-floating-panel" class="floating-panel md:hidden">
+            <h3 class="text-xl font-semibold text-cyan-400 mb-2 text-center">Next Signal</h3>
+            <div id="mobile-signal-card" class="signal-card p-4 rounded-xl border-glow-default text-center">
+                <p class="text-gray-400 text-lg text-center shimmer-effect glitch-text">Signal Analysis in Progress...</p>
+                <div class="mt-2">
+                    <span id="mobile-countdown-timer" class="text-3xl font-bold text-cyan-400 shimmer-effect pulse-glow-text">--:--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="w-full max-w-screen-xl text-center mt-auto py-4 border-t border-gray-700">
+            <div class="mahim-banner">
+                This Bot Made By Mahim Khan
+            </div>
+            <p class="text-gray-600 text-xs mb-4 flicker-text">AI-Powered Binary Options Signals</p>
+            <div class="flex justify-center space-x-6 mahim-social-links">
+                <a href="https://www.facebook.com/mahimkhan.mahimkhan.526" target="_blank" class="text-gray-400 hover:text-blue-500 transition-colors duration-300 text-2xl neon-glow-cyan">
+                    <i class="fab fa-facebook"></i>
+                </a>
+                <a href="https://www.instagram.com/labibkhanmahim" target="_blank" class="text-gray-400 hover:text-pink-500 transition-colors duration-300 text-2xl neon-glow-magenta">
+                    <i class="fab fa-instagram"></i>
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- TradingView Widget Script -->
+    <script type="text/javascript">
+        let tvWidget = null;
+        const defaultPair = "EUR/GBP"; // Default pair for TradingView
+
+        function createTradingViewWidget(symbol) {
+            if (tvWidget) {
+                tvWidget.remove(); // Remove existing widget if any
+            }
+            tvWidget = new TradingView.widget(
+                {
+                    "width": "100%",
+                    "height": "100%",
+                    "symbol": symbol,
+                    "interval": "1",
+                    "timezone": "Etc/UTC",
+                    "theme": "dark",
+                    "style": "1",
+                    "locale": "en",
+                    "toolbar_bg": "#1a1a1e",
+                    "enable_publishing": false,
+                    "hide_side_toolbar": false,
+                    "allow_symbol_change": true,
+                    "container_id": "tradingview_widget",
+                    "studies": ["RSI@tv-basicstudies", "MACD@tv-basicstudies", "BollingerBands@tv-basicstudies", "Volume@tv-basicstudies", "MovingAverageExponential@tv-basicstudies"],
+                    "show_popup_button": true, // Show the 'Open Chart' button
+                    "popup_width": "1000",
+                    "popup_height": "650",
+                    "watchlist": [
+                        // Updated to include only the specified currency pairs
+                        "AUD/USD", "EUR/JPY", "EUR/USD", "GBP/JPY", "GBP/USD", "NZD/USD",
+                        "USD/BDT", "USD/BRL", "USD/CAD", "USD/CHF", "USD/JPY", "USD/ZAR"
+                    ]
+                }
+            );
+        }
+
+        // Initialize widget on load
+        window.onload = function() {
+            startOnboardingSequence(); // Start the onboarding flow
+        };
+
+        // Handle currency pair selection change
+        document.getElementById('currency-pair-select').addEventListener('change', function() {
+            const selectedPair = this.value;
+            createTradingViewWidget(selectedPair);
+        });
+    </script>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+
+    <script>
+        // IMPORTANT: This BASE_URL will be dynamically set by Flask in PythonAnywhere
+        // When running locally, it might default to a local IP or Flask's default.
+        // For PythonAnywhere, Flask's render_template will replace this with the actual URL.
+        const BASE_URL = "{{ url_for('home', _external=True) }}".replace(/\/$/, ''); // Get the base URL of the Flask app
+
+        const API_URL = `${BASE_URL}/api/signal`; 
+        const LOGIN_API_URL = `${BASE_URL}/api/login`; 
+        const CHECK_AUTH_API_URL = `${BASE_URL}/api/check_auth`; 
+        const BACKEND_STATUS_API_URL = `${BASE_URL}/api/status`; 
+
+        const signalsGrid = document.getElementById('signal-cards-container');
+        const countdownTimerDisplay = document.getElementById('countdown-timer');
+        const mobileSignalCard = document.getElementById('mobile-signal-card');
+        const mobileCountdownTimerDisplay = document.getElementById('mobile-countdown-timer');
+        const voiceToggleBtn = document.getElementById('voice-toggle-btn');
+        const darkModeToggleBtn = document.getElementById('dark-mode-toggle-btn');
+        const signalHistoryContainer = document.getElementById('signal-history-container');
+        const backendStatusIndicator = document.getElementById('backend-status');
+        const lastUpdatedTimestamp = document.getElementById('last-updated-timestamp');
+        const newSignalNotification = document.getElementById('new-signal-notification');
+        const newSignalText = document.getElementById('new-signal-text');
+        const celebrationOverlay = document.getElementById('celebration-overlay');
+        const mainBotInterface = document.getElementById('main-bot-interface');
+        const logoutBtn = document.getElementById('logout-btn'); // Get the new logout button
+
+        // Onboarding elements
+        const onboardingContainer = document.getElementById('onboarding-container');
+        const onboardingPanel = document.getElementById('onboarding-panel');
+        const onboardingSoundToggleBtn = document.getElementById('onboarding-sound-toggle-btn'); // Sound toggle for onboarding
+
+        // Login elements
+        const loginContainer = document.getElementById('login-container');
+        const loginPanel = document.getElementById('login-panel');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const emailInput = document.getElementById('email-input');
+        const otpInput = document.getElementById('otp-input');
+        const unlockAccessBtn = document.getElementById('unlock-access-btn');
+        const errorAlert = document.getElementById('error-alert');
+        const errorMessage = document.getElementById('error-message');
+        const vaultUnlockOverlay = document.getElementById('vault-unlock-overlay');
+
+        // Global background elements
+        const globalBackgroundImage = document.getElementById('global-background-image');
+        const globalImageOverlay = document.getElementById('global-image-overlay');
+
+        // Main bot interface background elements (video)
+        const mainBotBackground = document.getElementById('main-bot-background');
+        const backgroundVideo = document.getElementById('background-video');
+
+        // Global state variables
+        let isVoiceEnabled = true;
+        let currentTheme = 'default';
+        let currentSignals = {};
+        let clientDisplayState = {};
+        let signalHistory = [];
+        let consecutiveWins = 0;
+
+        // Tone.js Synths for sounds - VOLUME ADJUSTED
+        let ambientSynth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "sine" },
+            envelope: { attack: 2, decay: 1, sustain: 0.5, release: 5 },
+            volume: -10 // Increased from -20
+        }).toDestination();
+        let ambientPart = null;
+
+        let typingSynth = new Tone.MembraneSynth().toDestination();
+        typingSynth.set({ pitchDecay: 0.005, octaves: 1, oscillator: { type: 'sine' }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }, volume: -5 }); // Increased from -15
+
+        let blipSynth = new Tone.PluckSynth().toDestination();
+        blipSynth.set({ attackNoise: 1, dampening: 4000, resonance: 0.9, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 }, volume: 0 }); // Increased from -10
+
+        let whooshSynth = new Tone.NoiseSynth({
+            noise: { type: 'pink' },
+            envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.5 },
+            volume: -5 // Increased from -15
+        }).toDestination();
+
+        let vaultOpenSynth = new Tone.MetalSynth().toDestination();
+        vaultOpenSynth.set({ frequency: 200, envelope: { attack: 0.001, decay: 1.4, sustain: 0, release: 0.2 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5, volume: 5 }); // Increased from -5
+
+        let electricSurgeSynth = new Tone.NoiseSynth({
+            noise: { type: 'brown' },
+            envelope: { attack: 0.01, decay: 1, sustain: 0, release: 1 },
+            volume: 0 // Increased from -10
+        }).toDestination();
+
+        let signalSynth = new Tone.Synth().toDestination();
+        signalSynth.oscillator.type = "triangle"; signalSynth.envelope.attack = 0.01; signalSynth.envelope.decay = 0.2; signalSynth.envelope.sustain = 0.1; signalSynth.envelope.release = 0.5;
+        signalSynth.volume.value = 0; // Increased from default
+
+        let winSynth = new Tone.Synth().toDestination();
+        winSynth.oscillator.type = "sine"; winSynth.envelope.attack = 0.02; winSynth.envelope.decay = 0.3; winSynth.envelope.sustain = 0.1; winSynth.envelope.release = 0.8;
+        winSynth.volume.value = 5; // Increased from default
+
+        let lossSynth = new Tone.Synth().toDestination();
+        lossSynth.oscillator.type = "sawtooth"; lossSynth.envelope.attack = 0.01; lossSynth.envelope.decay = 0.4; lossSynth.envelope.sustain = 0.1; lossSynth.envelope.release = 0.7;
+        lossSynth.volume.value = 0; // Increased from default
+
+        let celebrationSynth = new Tone.PolySynth().toDestination();
+        celebrationSynth.set({ oscillator: { type: "square" }, envelope: { attack: 0.05, decay: 0.5, sustain: 0.2, release: 1 }, volume: 5 }); // Increased from default
+
+        // Sound playing functions
+        function playSound(synth, notes, duration) {
+            if (isVoiceEnabled && Tone.context.state === 'running') {
+                synth.triggerAttackRelease(notes, duration);
+            } else if (isVoiceEnabled && Tone.context.state !== 'running') {
+                console.warn('AudioContext not running, sound not played.');
+            }
+        }
+
+        function playTypingSound() {
+            if (isVoiceEnabled && Tone.context.state === 'running') {
+                typingSynth.triggerAttackRelease("C2", "16n", Tone.now() + 0.001);
+            } else if (isVoiceEnabled && Tone.context.state !== 'running') {
+                console.warn('AudioContext not running, typing sound not played.');
+            }
+        }
+        function playBlipSound() { playSound(blipSynth, "C4", "8n"); }
+        function playWhooshSound() { playSound(whooshSynth, "0.5", "0.5"); }
+        function playVaultUnlockSound() {
+            if (isVoiceEnabled && Tone.context.state === 'running') {
+                vaultOpenSynth.triggerAttackRelease("C4", "0.8s");
+                electricSurgeSynth.triggerAttackRelease("1", "0.8s", Tone.now() + 0.1);
+            } else if (isVoiceEnabled && Tone.context.state !== 'running') {
+                console.warn('AudioContext not running, vault unlock sound not played.');
+            }
+        }
+        function playSignalSound() { playSound(signalSynth, "C5", "8n"); }
+        function playWinSound() { playSound(winSynth, ["C6", "E6", "G6"], "4n"); }
+        function playLossSound() { playSound(lossSynth, "C3", "4n"); }
+        function playCelebrationSound() { playSound(celebrationSynth, ["C4", "E4", "G4", "C5"], "1s"); }
+
+        // Ambient Background Music
+        function startAmbientMusic() {
+            if (isVoiceEnabled && !ambientPart && Tone.context.state === 'running') {
+                playAmbientMusicLoop();
+            } else if (!isVoiceEnabled && ambientPart) {
+                stopAmbientMusic();
+            } else if (isVoiceEnabled && Tone.context.state !== 'running') {
+                console.warn('AudioContext not running, ambient music not started.');
+            }
+        }
+
+        function playAmbientMusicLoop() {
+            const chords = [
+                ["C3", "E3", "G3", "C4"], // C major
+                ["F3", "A3", "C4", "F4"], // F major
+                ["G3", "B3", "D4", "G4"], // G major
+                ["Am3", "C4", "E4", "A4"] // A minor
+            ];
+            let chordIndex = 0;
+            ambientPart = new Tone.Loop(time => {
+                const currentChord = chords[chordIndex % chords.length];
+                ambientSynth.triggerAttackRelease(currentChord, "2n", time);
+                chordIndex++;
+            }, "2n").start(0);
+            ambientSynth.volume.rampTo(-5, 3); // Adjusted rampTo volume
+        }
+
+        function stopAmbientMusic() {
+            if (ambientPart) {
+                ambientPart.stop();
+                ambientPart.dispose();
+                ambientPart = null;
+                ambientSynth.volume.rampTo(-Infinity, 1);
+            }
+        }
+
+        // Onboarding Sound Toggle
+        onboardingSoundToggleBtn.addEventListener('click', async () => {
+            isVoiceEnabled = !isVoiceEnabled;
+            onboardingSoundToggleBtn.innerHTML = `<i class="fas fa-volume-${isVoiceEnabled ? 'up' : 'mute'} mr-2"></i> Sound: ${isVoiceEnabled ? 'ON' : 'OFF'}`;
+            if (isVoiceEnabled) {
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                }
+                startAmbientMusic();
+            } else {
+                stopAmbientMusic();
+                speechSynthesis.cancel();
+            }
+        });
+
+        // Function to show new signal notification
+        function showNewSignalNotification(pair, direction) {
+            newSignalText.textContent = `Pair - ${pair}, Direction - ${direction}`;
+            newSignalNotification.classList.add('show');
+            setTimeout(() => {
+                newSignalNotification.classList.remove('show');
+            }, 5000);
+        }
+
+        // Function to trigger celebration animation
+        function triggerCelebrationAnimation() {
+            if (celebrationOverlay.classList.contains('active')) {
+                celebrationOverlay.classList.remove('active');
+                void celebrationOverlay.offsetWidth;
+            }
+            celebrationOverlay.classList.add('active');
+            playCelebrationSound();
+            setTimeout(() => {
+                celebrationOverlay.classList.remove('active');
+            }, 6000);
+        }
+
+        // Function to fetch signals from the backend
+        async function fetchSignals() {
+            const token = localStorage.getItem('mk_signal_token');
+            if (!token) {
+                console.warn('No token found, not fetching signals.');
+                return;
+            }
+
+            if (Object.keys(currentSignals).length === 0 || Object.values(currentSignals).some(s => s.current_signal.result === "Data Error")) {
+                signalsGrid.innerHTML = `
+                    <div class="signal-card p-4 rounded-xl border-glow-default col-span-full text-center">
+                        <p class="text-gray-400 text-lg shimmer-effect glitch-text">Signal Analysis in Progress...</p>
+                        <p class="text-gray-500 text-sm mt-2">AI is searching for high-confidence trades. Please wait.</p>
+                        <div class="mt-2 text-center">
+                            <span id="countdown-timer" class="text-3xl font-bold text-cyan-400 shimmer-effect pulse-glow-text">--:--</span>
+                        </div>
+                    </div>
+                `;
+                mobileSignalCard.innerHTML = `
+                    <p class="text-gray-400 text-lg text-center shimmer-effect glitch-text">Signal Analysis in Progress...</p>
+                    <div class="mt-2">
+                        <span id="mobile-countdown-timer" class="text-3xl font-bold text-cyan-400 shimmer-effect pulse-glow-text">--:--</span>
+                    </div>
+                `;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    headers: {
+                        'Authorization': `Bearer ${token}` // Send token with request
+                    }
+                });
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        console.error('Authentication failed, redirecting to login.');
+                        logoutUser(); // Log out if token is invalid/expired
+                        return;
+                    }
+                    throw new Error(`Backend responded with status: ${response.status}`);
+                }
+                const fullSignalsData = await response.json(); 
+                
+                for (const pair in fullSignalsData) {
+                    const newSignal = fullSignalsData[pair].current_signal;
+                    const oldSignal = currentSignals[pair] ? currentSignals[pair].current_signal : null;
+
+                    if (newSignal.result === '⏳ WAITING' && 
+                        (!oldSignal || oldSignal.result !== '⏳ WAITING' || oldSignal.direction === 'NONE')) {
+                        showNewSignalNotification(newSignal.pair, newSignal.direction);
+                        playSignalSound();
+                    }
+                }
+
+                currentSignals = fullSignalsData; 
+                updateSignalsUI(currentSignals); 
+                updateSignalHistory(currentSignals); 
+                backendStatusIndicator.classList.remove('offline');
+                backendStatusIndicator.classList.add('online');
+                lastUpdatedTimestamp.textContent = `Last Updated: ${new Date().toLocaleTimeString()}`;
+            } catch (error) {
+                console.error('Error fetching signals:', error);
+                signalsGrid.innerHTML = `
+                    <div class="signal-card p-4 rounded-xl border-glow-red text-center col-span-full">
+                        <p class="text-red-400 text-lg">Error loading signals. Please ensure the backend is running.</p>
+                        <p class="text-red-300 text-sm mt-2">Details: ${error.message || 'Connection refused or unexpected response.'}</p>
+                    </div>
+                `;
+                mobileSignalCard.innerHTML = `
+                    <p class="text-red-400 text-lg text-center">Error loading signals.</p>
+                    <p class="text-red-300 text-sm mt-1">Check backend console.</p>
+                `;
+                backendStatusIndicator.classList.remove('online');
+                backendStatusIndicator.classList.add('offline');
+                lastUpdatedTimestamp.textContent = `Last Updated: Error`;
+            }
+        }
+
+        // Function to update the signal cards on the UI
+        function updateSignalsUI(fullSignalsData) {
+            signalsGrid.innerHTML = '';
+            const pairs = Object.keys(fullSignalsData).sort();
+            let highestPrioritySignal = null;
+            let highestPriority = -1;
+
+            pairs.forEach(pair => {
+                const pairData = fullSignalsData[pair];
+                const signal = pairData.current_signal;
+                const now = new Date();
+                const expiryTime = new Date(signal.expiry_timestamp * 1000);
+
+                let currentDisplaySignal = { ...signal };
+                let currentBorderClass = 'border-glow-default';
+                let currentEmoji = '⚡';
+                let currentResultTextClass = 'text-yellow-400';
+                let currentStatusText = 'Status:';
+                let currentCountdownHtml = '';
+                let resultText = 'No Signal';
+
+                const prevClientState = clientDisplayState[pair] || {
+                    signal_id: null,
+                    result: null,
+                    sound_played: { win: false, loss: false }
+                };
+
+                let shouldPlayWinSound = false;
+                let shouldPlayLossSound = false;
+
+                if (pairData.is_resting) {
+                    const restEndTime = new Date(pairData.rest_end_time);
+                    const timeLeftMs = restEndTime.getTime() - now.getTime();
+                    if (timeLeftMs > 0) {
+                        const minutes = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((timeLeftMs % (1000 * 60)) / 1000);
+                        currentCountdownHtml = `<p class="text-base text-gray-300">Resting for: <span class="font-bold text-cyan-400">${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</span></p>`;
+                        currentBorderClass = 'border-glow-resting';
+                        currentEmoji = '😴';
+                        currentStatusText = 'Bot Status:';
+                        currentResultTextClass = 'text-gray-400 text-xl';
+                        resultText = 'RESTING';
+                    } else {
+                        currentBorderClass = 'border-glow-default';
+                        currentEmoji = '🚫';
+                        currentResultTextClass = 'text-gray-500 text-xl';
+                        currentStatusText = 'Status:';
+                        resultText = 'No Signal';
+                    }
+                    clientDisplayState[pair] = { signal_id: null, result: null, sound_played: { win: false, loss: false } };
+
+                } else if (signal.result === '✅ WIN' || signal.result === '❌ LOSS') {
+                    if (signal.expiry_timestamp === 0 || now.getTime() >= expiryTime.getTime()) {
+                        currentStatusText = 'Trade Result:';
+                        if (signal.result === '✅ WIN') {
+                            currentBorderClass = 'border-glow-green';
+                            currentEmoji = '✅';
+                            currentResultTextClass = 'text-green-400 text-3xl';
+                            resultText = 'WIN 🔥';
+
+                            if (prevClientState.signal_id !== signal.signal_id ||
+                                (prevClientState.signal_id === signal.signal_id && prevClientState.result !== '✅ WIN' && !prevClientState.sound_played.win)) {
+                                shouldPlayWinSound = true;
+                            }
+                        } else {
+                            currentBorderClass = 'border-glow-red';
+                            currentEmoji = '❌';
+                            currentResultTextClass = 'text-red-400 text-3xl';
+                            resultText = 'LOSS 💔';
+
+                            if (prevClientState.signal_id !== signal.signal_id ||
+                                (prevClientState.signal_id === signal.signal_id && prevClientState.result !== '❌ LOSS' && !prevClientState.sound_played.loss)) {
+                                shouldPlayLossSound = true;
+                            }
+                        }
+                        currentCountdownHtml = `<p class="text-base text-gray-300">Finished at: <span class="font-bold text-purple-300">${signal.expiry_time}</span></p>`;
+                    } else {
+                        currentBorderClass = 'border-glow-yellow';
+                        currentEmoji = '⏳';
+                        currentResultTextClass = 'text-yellow-400 text-3xl';
+                        currentStatusText = 'Trade Status:';
+                        resultText = 'WAITING (Result Pending)';
+                        const timeLeft = expiryTime.getTime() - now.getTime();
+                        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                        currentCountdownHtml = `<p class="text-base text-gray-300">Time Left: <span class="font-bold text-cyan-400">${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</span></p>`;
+                    }
+                    clientDisplayState[pair] = {
+                        signal_id: signal.signal_id,
+                        result: signal.result,
+                        sound_played: {
+                            win: prevClientState.sound_played.win || shouldPlayWinSound,
+                            loss: prevClientState.sound_played.loss || shouldPlayLossSound
+                        }
+                    };
+
+                } else if (signal.result === '⏳ WAITING') {
+                    if (signal.expiry_timestamp > 0 && now.getTime() >= expiryTime.getTime()) {
+                        currentBorderClass = 'border-glow-yellow';
+                        currentEmoji = '⏳';
+                        currentResultTextClass = 'text-yellow-400 text-3xl';
+                        currentStatusText = 'Trade Status:';
+                        resultText = 'CHECKING RESULT...';
+                        currentCountdownHtml = `<p class="text-base text-gray-300">Expired at: <span class="font-bold text-purple-300">${signal.expiry_time}</span></p>`;
+                    } else if (signal.expiry_timestamp > 0) {
+                        const timeLeft = expiryTime.getTime() - now.getTime();
+                        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                        currentCountdownHtml = `<p class="text-base text-gray-300">Time Left: <span class="font-bold text-cyan-400">${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</span></p>`;
+                        currentBorderClass = 'border-glow-yellow';
+                        currentEmoji = '⏳';
+                        currentResultTextClass = 'text-yellow-400 text-3xl';
+                        currentStatusText = 'Trade Status:';
+                        resultText = 'WAITING';
+                    } else {
+                        currentBorderClass = 'border-glow-yellow';
+                        currentEmoji = '?';
+                        currentResultTextClass = 'text-yellow-400 text-3xl';
+                        currentStatusText = 'Status:';
+                        resultText = 'WAITING (No Expiry Data)';
+                    }
+                    clientDisplayState[pair] = { signal_id: signal.signal_id, result: signal.result, sound_played: { win: false, loss: false } };
+
+                } else if (signal.result === 'Data Error') {
+                    currentBorderClass = 'border-glow-red';
+                    currentEmoji = '⚠️';
+                    currentResultTextClass = 'text-red-500 text-xl';
+                    currentStatusText = 'Error:';
+                    resultText = 'Data Error';
+                    currentCountdownHtml = `<p class="text-base text-gray-300">Please check backend.</p>`;
+                    clientDisplayState[pair] = { signal_id: signal.signal_id, result: signal.result, sound_played: { win: false, loss: false } };
+                } else { // No Signal
+                    currentBorderClass = 'border-glow-default';
+                    currentEmoji = '?';
+                    currentResultTextClass = 'text-gray-500 text-xl';
+                    currentStatusText = 'Status:';
+                    resultText = 'No Signal';
+                    clientDisplayState[pair] = { signal_id: signal.signal_id, result: signal.result, sound_played: { win: false, loss: false } };
+                }
+
+                if (shouldPlayWinSound) {
+                    playWinSound();
+                    consecutiveWins++;
+                    if (consecutiveWins >= 5) {
+                        triggerCelebrationAnimation();
+                    }
+                } else if (shouldPlayLossSound) {
+                    playLossSound();
+                    consecutiveWins = 0;
+                }
+
+                const cardContentHtml = `
+                    <div class="flex flex-col gap-1 flex-grow">
+                        <p class="text-2xl font-bold text-cyan-300">${currentEmoji} <span class="text-gray-400">PAIR:</span> ${currentDisplaySignal.pair}</p>
+                        <p class="text-base text-gray-300"><span class="font-medium">SIGNAL AT:</span> <span class="text-purple-300">${currentDisplaySignal.signal_generated_at}</span></p>
+                        <p class="text-base text-gray-300"><span class="font-medium">ENTRY TIME:</span> <span class="text-purple-300">${currentDisplaySignal.entry_time}</span></p>
+                        <p class="text-base text-gray-300"><span class="font-medium">EXPIRY:</span> <span class="text-purple-300">${currentDisplaySignal.expiry_time}</span></p>
+                        <p class="text-base text-gray-300"><span class="font-medium">DIRECTION:</span> <span class="font-semibold ${currentDisplaySignal.direction === 'UP' ? 'text-green-400' : (currentDisplaySignal.direction === 'DOWN' ? 'text-red-400' : 'text-gray-400')}">${currentDisplaySignal.direction === 'UP' ? '▲ UP' : (currentDisplaySignal.direction === 'DOWN' ? '▼ DOWN' : '— NONE')}</span></p>
+                        <p class="text-base text-gray-300"><span class="font-medium">CONFIDENCE:</span> <span class="text-magenta-300">${currentDisplaySignal.confidence}</span></p>
+                        ${currentCountdownHtml}
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-700">
+                        <p class="font-bold ${currentResultTextClass}">${currentStatusText} ${resultText}</p>
+                        ${signal.reason ? `<p class="signal-reason">🔍 Reason: ${signal.reason}</p>` : ''}
+                    </div>
+                `;
+
+                const newCardElement = document.createElement('div');
+                newCardElement.className = `signal-card p-4 rounded-xl ${currentBorderClass} flex flex-col justify-between`;
+                newCardElement.dataset.pair = pair;
+                newCardElement.innerHTML = cardContentHtml;
+                signalsGrid.appendChild(newCardElement);
+
+                let currentPriority = 0;
+                if (currentDisplaySignal.result === '⏳ WAITING') {
+                    currentPriority = 4;
+                } else if (currentDisplaySignal.result === '✅ WIN' || currentDisplaySignal.result === '❌ LOSS') {
+                    currentPriority = 3;
+                } else if (pairData.is_resting) {
+                    currentPriority = 2;
+                } else if (currentDisplaySignal.result === 'No Signal' || currentDisplaySignal.result === 'Data Error') {
+                    currentPriority = 1;
+                }
+
+                if (currentPriority > highestPriority) {
+                    highestPriority = currentPriority;
+                    highestPrioritySignal = { pair, pairData, signal: currentDisplaySignal, borderClass: currentBorderClass, contentHtml: cardContentHtml };
+                }
+            });
+
+            if (highestPrioritySignal) {
+                mobileSignalCard.innerHTML = highestPrioritySignal.contentHtml;
+                mobileSignalCard.className = `signal-card p-4 rounded-xl text-center ${highestPrioritySignal.borderClass}`;
+            } else {
+                 mobileSignalCard.innerHTML = `
+                    <p class="text-gray-400 text-lg text-center shimmer-effect glitch-text">Signal Analysis in Progress...</p>
+                    <div class="mt-2">
+                        <span id="mobile-countdown-timer" class="text-3xl font-bold text-cyan-400 shimmer-effect pulse-glow-text">--:--</span>
+                    </div>
+                `;
+                 mobileSignalCard.className = 'signal-card p-4 rounded-xl border-glow-default text-center';
+            }
+
+            const anyActiveOrCoolingDownResult = Object.values(fullSignalsData).some(pairData => {
+                const signal = pairData.current_signal;
+                const now = new Date();
+                const resultDisplayEndTime = pairData.result_display_end_time ? new Date(pairData.result_display_end_time).getTime() : 0;
+
+                return signal.result === '⏳ WAITING' || 
+                       pairData.is_resting || 
+                       ((signal.result === '✅ WIN' || signal.result === '❌ LOSS') && now.getTime() < resultDisplayEndTime);
+            });
+
+            if (!anyActiveOrCoolingDownResult && signalsGrid.children.length === 0) {
+                signalsGrid.innerHTML = `
+                    <div class="signal-card p-4 rounded-xl border-glow-default col-span-full text-center">
+                        <p class="text-gray-400 text-lg shimmer-effect glitch-text">Signal Analysis in Progress...</p>
+                        <p class="text-gray-500 text-sm mt-2">AI is searching for high-confidence trades. Please wait.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Function to update signal history
+        function updateSignalHistory(fullSignalsData) {
+            const validNewSignals = Object.values(fullSignalsData).filter(pairData => 
+                pairData.current_signal.direction !== 'NONE' && 
+                pairData.current_signal.result !== 'No Signal' && 
+                pairData.current_signal.result !== 'Data Error'
+            );
+            const completedSignals = validNewSignals.filter(pairData => 
+                pairData.current_signal.result === '✅ WIN' || 
+                pairData.current_signal.result === '❌ LOSS'
+            );
+
+            completedSignals.forEach(newPairData => {
+                const newSig = newPairData.current_signal;
+                const exists = signalHistory.some(oldSig => 
+                    oldSig.pair === newSig.pair && 
+                    oldSig.entry_time === newSig.entry_time && 
+                    oldSig.result === newSig.result
+                );
+                if (!exists) {
+                    signalHistory.unshift(newSig);
+                }
+            });
+            
+            signalHistory = signalHistory.slice(0, 10);
+
+            if (signalHistory.length === 0) {
+                signalHistoryContainer.innerHTML = '<p class="text-gray-500 text-center">No history yet.</p>';
+                return;
+            }
+
+            signalHistoryContainer.innerHTML = '';
+            signalHistory.forEach(signal => {
+                let resultClass = 'text-yellow-400';
+                let resultText = signal.result;
+                if (signal.result === '✅ WIN') {
+                    resultClass = 'text-green-400';
+                    resultText = 'WIN 🔥';
+                } else if (signal.result === '❌ LOSS') {
+                    resultClass = 'text-red-400';
+                    resultText = 'LOSS 💔';
+                }
+                const historyItemHtml = `
+                    <div class="flex justify-between items-center py-1 border-b border-gray-800 last:border-b-0">
+                        <span class="text-gray-400">${signal.pair} - ${signal.entry_time}</span>
+                        <span class="font-semibold ${signal.direction === 'UP' ? 'text-green-400' : (signal.direction === 'DOWN' ? 'text-red-400' : 'text-gray-400')}">${signal.direction === 'UP' ? '▲ UP' : (signal.direction === 'DOWN' ? '▼ DOWN' : '— NONE')}</span>
+                        <span class="${resultClass}">${resultText}</span>
+                    </div>
+                `;
+                signalHistoryContainer.insertAdjacentHTML('beforeend', historyItemHtml);
+            });
+        }
+
+        // Countdown timer logic for the main display
+        function startCountdown() {
+            const updateCountdown = () => {
+                const now = new Date();
+                let earliestNextActionTime = null;
+
+                const currentSeconds = now.getSeconds();
+                let secondsToNextInterval = 30 - (currentSeconds % 30); 
+                if (secondsToNextInterval === 30) secondsToNextInterval = 0;
+                let nextGlobalSignalAttemptTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(),
+                                          now.getMinutes(), now.getSeconds() + secondsToNextInterval, 0);
+                if (now.getTime() > nextGlobalSignalAttemptTime.getTime()) {
+                    nextGlobalSignalAttemptTime.setSeconds(nextGlobalSignalAttemptTime.getSeconds() + 30);
+                }
+                earliestNextActionTime = nextGlobalSignalAttemptTime.getTime();
+
+                for (const pair in currentSignals) {
+                    const pairData = currentSignals[pair];
+                    const signal = pairData.current_signal;
+
+                    if (signal.result === '⏳ WAITING' && signal.expiry_timestamp > 0) {
+                        const expiryDt = new Date(signal.expiry_timestamp * 1000);
+                        if (expiryDt.getTime() > now.getTime()) {
+                            if (earliestNextActionTime === null || expiryDt.getTime() < earliestNextActionTime) {
+                                earliestNextActionTime = expiryDt.getTime();
+                            }
+                        }
+                    } else if (pairData.is_resting) {
+                        const restEndTime = new Date(pairData.rest_end_time);
+                        if (restEndTime.getTime() > now.getTime()) {
+                            if (earliestNextActionTime === null || restEndTime.getTime() < earliestNextActionTime) {
+                                earliestNextActionTime = restEndTime.getTime();
+                            }
+                        }
+                    }
+                }
+                
+                let timeLeft = 0;
+                if (earliestNextActionTime !== null) {
+                    timeLeft = earliestNextActionTime - now.getTime();
+                }
+
+                if (timeLeft <= 0) {
+                    countdownTimerDisplay.textContent = "00:00";
+                    mobileCountdownTimerDisplay.textContent = "00:00";
+                    countdownTimerDisplay.classList.add('glitch-text');
+                    mobileCountdownTimerDisplay.classList.add('glitch-text');
+                    countdownTimerDisplay.classList.remove('shimmer-effect', 'pulse-glow-text');
+                    mobileCountdownTimerDisplay.classList.remove('shimmer-effect', 'pulse-glow-text');
+
+                    fetchSignals();
+                    setTimeout(() => {
+                        countdownTimerDisplay.classList.remove('glitch-text');
+                        mobileCountdownTimerDisplay.classList.remove('glitch-text');
+                        countdownTimerDisplay.classList.add('shimmer-effect', 'pulse-glow-text');
+                        mobileCountdownTimerDisplay.classList.add('shimmer-effect', 'pulse-glow-text');
+                    }, 1000);
+                } else {
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                    countdownTimerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    mobileCountdownTimerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }
+
+                updateSignalsUI(currentSignals);
+            };
+
+            setInterval(updateCountdown, 1000);
+            updateCountdown();
+        }
+
+        // Backend Connection Status Check
+        async function checkBackendStatus() {
+            try {
+                // Use the new, unprotected status endpoint for backend health check
+                const response = await fetch(BACKEND_STATUS_API_URL, { method: 'GET' });
+                if (response.ok) {
+                    backendStatusIndicator.classList.remove('offline');
+                    backendStatusIndicator.classList.add('online');
+                } else {
+                    backendStatusIndicator.classList.remove('online');
+                    backendStatusIndicator.classList.add('offline');
+                }
+            } catch (error) {
+                console.error("Backend connection error:", error);
+                backendStatusIndicator.classList.remove('online');
+                backendStatusIndicator.classList.add('offline');
+            }
+        }
+
+        // Voice Notification (Text-to-Speech)
+        function speakSignal(signal) {
+            if ('speechSynthesis' in window && isVoiceEnabled) {
+                const utterance = new SpeechSynthesisUtterance();
+                utterance.lang = 'en-US';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+
+                let message = `New signal for ${signal.pair}. Direction: ${signal.direction}. Confidence: ${signal.confidence}. Entry time: ${signal.entry_time}. Expiry time: ${signal.expiry_time}.`;
+                if (signal.direction === 'NONE') {
+                    message = `No high confidence signal for ${signal.pair} at this time.`;
+                }
+                utterance.text = message;
+
+                const voices = speechSynthesis.getVoices();
+                const englishFemaleVoice = voices.find(voice => voice.lang === 'en-US' && voice.name.includes('Female'));
+                const japaneseFemaleVoice = voices.find(voice => voice.lang === 'ja-JP' && voice.name.includes('Female'));
+
+                if (japaneseFemaleVoice) {
+                    utterance.voice = japaneseFemaleVoice;
+                } else if (englishFemaleVoice) {
+                    utterance.voice = englishFemaleVoice;
+                } else {
+                    console.warn("No specific female or Japanese voice found, using default.");
+                }
+
+                speechSynthesis.speak(utterance);
+            } else {
+                console.warn("Speech synthesis not supported or disabled in this browser.");
+            }
+        }
+
+        // Voice Toggle Button for Main Interface
+        voiceToggleBtn.addEventListener('click', async () => { 
+            isVoiceEnabled = !isVoiceEnabled;
+            voiceToggleBtn.innerHTML = `<i class="fas fa-volume-${isVoiceEnabled ? 'up' : 'mute'} mr-2"></i> Voice Notifications: ${isVoiceEnabled ? 'ON' : 'OFF'}`;
+            if (isVoiceEnabled) {
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                }
+                startAmbientMusic();
+            } else {
+                speechSynthesis.cancel();
+                signalSynth.triggerRelease(); winSynth.triggerRelease(); lossSynth.triggerRelease();
+                celebrationSynth.triggerRelease();
+                stopAmbientMusic();
+            }
+        });
+
+        // Dark Mode Toggle
+        darkModeToggleBtn.addEventListener('click', () => {
+            const body = document.body;
+            if (currentTheme === 'default') {
+                body.classList.remove('dark-mode', 'ultra-dark-mode');
+                currentTheme = 'default';
+                darkModeToggleBtn.innerHTML = '<i class="fas fa-moon mr-2"></i> Dark Mode: Default';
+            } else if (currentTheme === 'dark-mode') {
+                body.classList.remove('dark-mode');
+                body.classList.add('ultra-dark-mode');
+                currentTheme = 'ultra-dark-mode';
+                darkModeToggleBtn.innerHTML = '<i class="fas fa-moon mr-2"></i> Dark Mode: Ultra Dark';
+            } else {
+                body.classList.remove('ultra-dark-mode');
+                body.classList.add('dark-mode');
+                currentTheme = 'dark-mode';
+                darkModeToggleBtn.innerHTML = '<i class="fas fa-moon mr-2"></i> Dark Mode: Dark';
+            }
+        });
+
+        // Set initial state for voice toggle button on main interface
+        document.addEventListener('DOMContentLoaded', () => {
+            voiceToggleBtn.innerHTML = `<i class="fas fa-volume-${isVoiceEnabled ? 'up' : 'mute'} mr-2"></i> Voice Notifications: ${isVoiceEnabled ? 'ON' : 'OFF'}`;
+        });
+
+        if ('speechSynthesis' in window) {
+            speechSynthesis.onvoiceschanged = () => { console.log("Speech voices loaded."); };
+        }
+
+        // --- Onboarding Flow Logic ---
+        const onboardingSteps = [
+            {
+                title: '⚠️ Disclaimer',
+                content: `
+                    <p>⚠️ <strong>Disclaimer</strong></p>
+                    <p>MK SIGNAL X BOT is a signal assistant designed for educational purposes only.</p>
+                    <p>It performs advanced market analysis using <strong>real-time forex data</strong> to generate actionable trading ideas.</p>
+                    <p>However, binary brokers like Quotex operate as <strong>OTC (over-the-counter)</strong> platforms — meaning their prices may not align with the real forex market. As a result, signals generated from authentic data may not always match OTC price actions.</p>
+                    <p>📌 <strong>Use your own judgment</strong>. Analyze momentum, confirm market flow, and double-check timing before entry.</p>
+                    <p>MK SIGNAL X BOT does not guarantee profits. It is a smart assistant — <strong>not a fortune-teller</strong>.</p>
+                    <p>🚨 <strong>Trade responsibly. Understand risk.</strong></p>
+                `,
+                animationType: 'typing'
+            },
+            {
+                title: '🕒 Signal Guidelines & Timing',
+                content: `
+                    <ul>
+                        <li><span class="emoji-pulse">⏱️</span> <strong>Signal Type:</strong> 1-Minute Candlestick Strategy</li>
+                        <li><span class="emoji-pulse">🌐</span> <strong>Time Zone:</strong> UTC +6:00 (Bangladesh Standard Time)</li>
+                        <li><span class="emoji-pulse">🧠</span> <strong>Powered By:</strong></li>
+                        <ul>
+                            <li>- EMA (10/21)</li>
+                            <li>- RSI (14)</li>
+                            <li>- MACD (12,26,9)</li>
+                            <li>- Bollinger Bands</li>
+                            <li>- Volume Spike Tracker</li>
+                        </ul>
+                        <li><span class="emoji-pulse">📈</span> <strong>Entry Precision Required:</strong> Enter exactly when the signal says.</li>
+                        <li><span class="emoji-pulse">⚠️</span> Avoid early/late entries — <strong>follow candle opening rules</strong>.</li>
+                        <li><span class="emoji-pulse">👁️</span> Confirm market strength visually — candle body, trend, support/resistance zones.</li>
+                        <li><span class="emoji-pulse">🎯</span> Use MK SIGNAL X BOT to <strong>guide</strong>, not decide — <strong>you are the trader</strong>.</li>
+                    </ul>
+                `,
+                animationType: 'fade-in-bullets'
+            },
+            {
+                title: '🤖 About MK SIGNAL X BOT',
+                content: `
+                    <p>👤 <strong>Created by Mahim Khan</strong>, MK SIGNAL X BOT is a high-intelligence signal assistant crafted with real trading experience, algorithmic logic, and AI-powered mathematics.</p>
+                    <p>The system extracts clean entries based on <strong>live forex data</strong>, technical indicator fusion, and risk-managed strategies.</p>
+                    <p>While the tool is optimized for professional use, binary platforms are risky and prone to manipulation.</p>
+                    <p>💼 You must manage risk carefully. Don’t overtrade.</p>
+                    <p>🔍 This bot offers <strong>analysis</strong>, not promises.</p>
+                    <p>💡 Use strict <strong>money management</strong>. Understand chart flow. Stay disciplined.</p>
+                    <p>🧠 Let AI support your trades — but <strong>you remain in control.</strong></p>
+                `,
+                animationType: 'fade-in-paragraph'
+            }
+        ];
+
+        async function animateTextContent(element, contentHtml, animationType, charDelay = 15, elementDelay = 70) {
+            element.innerHTML = '';
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = contentHtml;
+
+            const processNode = async (node, parentElement) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    if (animationType === 'typing') {
+                        for (let i = 0; i < node.textContent.length; i++) {
+                            const charSpan = document.createElement('span');
+                            charSpan.textContent = node.textContent[i];
+                            charSpan.classList.add('typing-char');
+                            parentElement.appendChild(charSpan);
+                            playTypingSound();
+                            await new Promise(resolve => setTimeout(resolve, charDelay));
+                            charSpan.style.opacity = '1';
+                            charSpan.style.transform = 'translateY(0)';
+                        }
+                    } else {
+                        parentElement.textContent += node.textContent;
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    const newElement = document.createElement(node.tagName);
+                    Array.from(node.attributes).forEach(attr => {
+                        newElement.setAttribute(attr.name, attr.value);
+                    });
+
+                    if (node.classList.contains('emoji-pulse')) {
+                        newElement.classList.add('emoji-pulse');
+                    }
+
+                    if (animationType !== 'typing' && (node.tagName === 'P' || node.tagName === 'LI')) {
+                        newElement.classList.add('fade-in-element');
+                    }
+
+                    for (const childNode of Array.from(node.childNodes)) {
+                        await processNode(childNode, newElement);
+                    }
+                    parentElement.appendChild(newElement);
+
+                    if (animationType !== 'typing' && (node.tagName === 'P' || node.tagName === 'LI')) {
+                        await new Promise(resolve => setTimeout(resolve, elementDelay));
+                        newElement.style.opacity = '1';
+                        newElement.style.transform = 'translateY(0)';
+                    }
+                }
+            };
+
+            for (const child of Array.from(tempDiv.childNodes)) {
+                if (child.nodeType === Node.ELEMENT_NODE) {
+                    if (child.tagName === 'P' || child.tagName === 'UL') {
+                        const containerElement = document.createElement(child.tagName);
+                        element.appendChild(containerElement);
+                        if (animationType !== 'typing') {
+                             containerElement.classList.add('fade-in-element');
+                        }
+                        for (const grandChild of Array.from(child.childNodes)) {
+                            await processNode(grandChild, containerElement);
+                        }
+                        if (animationType !== 'typing') {
+                            await new Promise(resolve => setTimeout(resolve, elementDelay));
+                            containerElement.style.opacity = '1';
+                            containerElement.style.transform = 'translateY(0)';
+                        }
+                    } else {
+                        await processNode(child, element);
+                    }
+                } else {
+                    await processNode(child, element);
+                }
+            }
+        }
+
+        async function startOnboardingSequence() {
+            onboardingContainer.style.display = 'flex';
+            loginContainer.style.display = 'none'; // Ensure login is hidden
+            mainBotInterface.style.display = 'none'; // Ensure main interface is hidden
+            globalBackgroundImage.style.display = 'block'; // Ensure image background is visible
+            globalImageOverlay.style.display = 'block'; // Ensure image overlay is visible
+            mainBotBackground.style.display = 'none'; // Ensure video background is hidden initially
+            
+            // Start ambient music (image doesn't need .play())
+            startAmbientMusic();
+
+            // Animate panel entrance
+            onboardingPanel.classList.add('active'); // Activate panel for initial scale/opacity animation
+            playWhooshSound(); // Play whoosh sound for panel entry
+            await new Promise(resolve => setTimeout(resolve, 400)); // Wait for panel to appear
+
+            for (let i = 0; i < onboardingSteps.length; i++) {
+                const stepData = onboardingSteps[i];
+
+                // Add title
+                const titleElement = document.createElement('h2');
+                titleElement.className = 'screen-title'; // Changed to general screen-title
+                titleElement.textContent = stepData.title;
+                onboardingPanel.appendChild(titleElement);
+                titleElement.style.opacity = '1';
+                titleElement.style.transform = 'translateY(0)';
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                // Add content
+                const contentElement = document.createElement('div');
+                contentElement.className = 'onboarding-content';
+                onboardingPanel.appendChild(contentElement);
+                await animateTextContent(contentElement, stepData.content, stepData.animationType);
+                await new Promise(resolve => setTimeout(resolve, 800));
+            }
+
+            // Add the final "Enter Bot" button
+            const buttonElement = document.createElement('button');
+            buttonElement.className = 'action-button mt-6'; // Changed to general action-button
+            buttonElement.textContent = '🔓 Enter Bot';
+            onboardingPanel.appendChild(buttonElement);
+
+            // Animate button entrance
+            buttonElement.style.opacity = '0';
+            buttonElement.style.transform = 'translateY(20px)';
+            await new Promise(resolve => setTimeout(resolve, 300));
+            buttonElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            buttonElement.style.opacity = '1';
+            buttonElement.style.transform = 'translateY(0)';
+            
+            buttonElement.addEventListener('click', function(e) {
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const ripple = document.createElement('span');
+                ripple.classList.add('ripple');
+                ripple.style.left = `${x}px`;
+                ripple.style.top = `${y}px`;
+                this.appendChild(ripple);
+
+                ripple.addEventListener('animationend', () => {
+                    ripple.remove();
+                });
+                playBlipSound();
+            });
+
+            buttonElement.onclick = () => {
+                const lockIcon = buttonElement.querySelector('.fas.fa-lock-open');
+                if (lockIcon) {
+                    lockIcon.classList.add('lock-icon-anim');
+                }
+                playVaultUnlockSound();
+                
+                onboardingPanel.classList.remove('active');
+                onboardingPanel.classList.add('slide-out-left');
+                stopAmbientMusic();
+
+                setTimeout(() => {
+                    onboardingContainer.style.display = 'none';
+                    // After onboarding, transition to the login screen
+                    startLoginScreen();
+                }, 500);
+            };
+        }
+
+        async function startLoginScreen() {
+            loginContainer.style.display = 'flex';
+            loginPanel.classList.add('active'); // Activate login panel
+            playWhooshSound(); // Play whoosh sound for panel entry
+            await new Promise(resolve => setTimeout(resolve, 400));
+
+            await animateTextContent(welcomeMessage, "Welcome to MK SIGNAL X BOT — Login to Continue", 'typing');
+            await new Promise(resolve => setTimeout(resolve, 800));
+        }
+
+        function showErrorAlert(message) {
+            errorMessage.textContent = message;
+            errorAlert.classList.add('show');
+            loginPanel.style.animation = 'shake 0.3s';
+            setTimeout(() => {
+                errorAlert.classList.remove('show');
+                loginPanel.style.animation = '';
+            }, 3000);
+        }
+
+        async function showSuccessAnimation() {
+            vaultUnlockOverlay.classList.add('active');
+            playVaultUnlockSound();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            vaultUnlockOverlay.classList.remove('active');
+            // Transition to dashboard
+            loginContainer.style.display = 'none';
+            globalBackgroundImage.style.display = 'none'; // Hide image background
+            globalImageOverlay.style.display = 'none'; // Hide image overlay
+            mainBotInterface.style.display = 'flex';
+            mainBotBackground.style.display = 'block'; // Show video background for main interface
+            backgroundVideo.play(); // Play the video for the main interface
+            document.body.style.overflow = 'auto'; // Re-enable scrolling for main dashboard
+        }
+
+        async function handleLogin() {
+            playBlipSound();
+            const email = emailInput.value.trim();
+            const otp = otpInput.value.trim();
+
+            if (!email || !otp) {
+                showErrorAlert("Please enter both email and OTP.");
+                return;
+            }
+
+            try {
+                const response = await fetch(LOGIN_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email: email, otp_code: otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    localStorage.setItem('mk_signal_token', data.token);
+                    await showSuccessAnimation();
+                    // Initialize dashboard functions after successful login
+                    createTradingViewWidget(defaultPair);
+                    startCountdown();
+                    fetchSignals();
+                    setInterval(fetchSignals, 10000);
+                    checkBackendStatus();
+                    setInterval(checkBackendStatus, 15000);
+                } else {
+                    showErrorAlert(data.message || "Login failed. Please try again.");
+                    otpInput.value = '';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showErrorAlert("Network error or server unavailable.");
+                otpInput.value = '';
+            }
+        }
+
+        unlockAccessBtn.addEventListener('click', handleLogin);
+
+        otpInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                handleLogin();
+            }
+        });
+
+        // Function to check if user is already authenticated (skips onboarding and login)
+        async function checkAuthAndRedirect() {
+            const token = localStorage.getItem('mk_signal_token');
+            if (token) {
+                try {
+                    const response = await fetch(CHECK_AUTH_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    if (response.ok) {
+                        console.log('User already authenticated. Redirecting to dashboard.');
+                        onboardingContainer.style.display = 'none';
+                        loginContainer.style.display = 'none';
+                        globalBackgroundImage.style.display = 'none'; // Hide image background
+                        globalImageOverlay.style.display = 'none'; // Hide image overlay
+                        mainBotInterface.style.display = 'flex';
+                        mainBotBackground.style.display = 'block'; // Show video background for main interface
+                        backgroundVideo.play(); // Play the video for the main interface
+                        document.body.style.overflow = 'auto';
+                        // Initialize dashboard functions
+                        createTradingViewWidget(defaultPair);
+                        startCountdown();
+                        fetchSignals();
+                        setInterval(fetchSignals, 10000);
+                        checkBackendStatus();
+                        setInterval(checkBackendStatus, 15000);
+                        stopAmbientMusic(); // Stop ambient music if already logged in
+                        return true; // Indicate that redirection happened
+                    } else {
+                        console.log('Authentication failed or token expired. Proceeding to onboarding/login.');
+                        localStorage.removeItem('mk_signal_token'); // Clear invalid token
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('Error checking authentication:', error);
+                    localStorage.removeItem('mk_signal_token');
+                    return false;
+                }
+            }
+            return false; // No token found
+        }
+
+        function logoutUser() {
+            console.log('Logging out user: Clearing JWT token from localStorage.'); // Added console log
+            localStorage.removeItem('mk_signal_token');
+            window.location.reload(); // Reload page to show onboarding/login screen
+        }
+
+        logoutBtn.addEventListener('click', logoutUser); // Attach event listener to the logout button
+
+        // Ensure Tone.js audio context starts on first user interaction
+        document.body.addEventListener('click', async () => {
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+                console.log('AudioContext resumed successfully by user interaction.');
+            }
+        }, { once: true });
+
+        // Initial check on load
+        window.onload = async function() {
+            const isAuthenticated = await checkAuthAndRedirect();
+            if (!isAuthenticated) {
+                startOnboardingSequence(); // If not authenticated, start onboarding
+            }
+        };
+    </script>
+</body>
+</html>
