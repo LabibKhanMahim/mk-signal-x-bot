@@ -857,13 +857,17 @@ def signal_generation_loop():
                         signals[pair]["result_display_end_time"] = current_time + datetime.timedelta(seconds=COOLDOWN_AFTER_RESULT_SECONDS) 
 
                         if signal_data["direction"] != "NONE":
-                            signals[pair]["signals_given_count"] = signals[pair].get("signals_given_count", 0) + 1 # Initialize if not exists
-                            print(f"DEBUG: {pair}: Signals given since last rest: {signals[pair]['signals_given_count']}")
+                            # Only increment signals_given_count if it was a valid signal (not NONE)
+                            # and if it was not already a WIN/LOSS (i.e., it just transitioned to WIN/LOSS)
+                            # This prevents double counting if the signal was already WIN/LOSS and just being displayed
+                            if signal_data["result"] in ["✅ WIN", "❌ LOSS"] and prevClientState.result not in ["✅ WIN", "❌ LOSS"]:
+                                signals[pair]["signals_given_count"] = signals[pair].get("signals_given_count", 0) + 1 # Initialize if not exists
+                                print(f"DEBUG: {pair}: Signals given since last rest: {signals[pair]['signals_given_count']}")
 
                         if signals[pair].get("signals_given_count", 0) >= 5: # Check signals_given_count
                             signals[pair]["is_resting"] = True
                             signals[pair]["rest_end_time"] = current_time + datetime.timedelta(minutes=RESTING_PERIOD_MINUTES) 
-                            signals[pair]["signals_given_count"] = 0
+                            signals[pair]["signals_given_count"] = 0 # Reset count when entering rest
                             print(f"DEBUG: {pair} has given 5 signals. Entering {RESTING_PERIOD_MINUTES}-minute rest until {signals[pair]['rest_end_time'].strftime('%H:%M:%S')}.")
                         else:
                             print(f"DEBUG: Updated result for {pair}: {result}. Displaying for {COOLDOWN_AFTER_RESULT_SECONDS} seconds.")

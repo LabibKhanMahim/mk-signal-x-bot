@@ -703,10 +703,30 @@
     <!-- TradingView Widget Script -->
     <script type="text/javascript">
         let tvWidget = null;
-        const defaultPair = "EUR/GBP"; // Default pair for TradingView
+        // Use a more robust default pair for TradingView
+        const defaultPair = "FX_IDC:EURUSD"; 
+
+        // Mapping for TradingView symbols
+        const tradingViewSymbolMap = {
+            "AUD/USD": "FX_IDC:AUDUSD",
+            "EUR/JPY": "FX_IDC:EURJPY",
+            "EUR/USD": "FX_IDC:EURUSD",
+            "GBP/JPY": "FX_IDC:GBPJPY",
+            "GBP/USD": "FX_IDC:GBPUSD",
+            "NZD/USD": "FX_IDC:NZDUSD",
+            "USD/BDT": "FX_IDC:USDBDT", // Assuming FX_IDC for BDT, might need verification
+            "USD/BRL": "FX_IDC:USDBRL", // Assuming FX_IDC for BRL, might need verification
+            "USD/CAD": "FX_IDC:USDCAD",
+            "USD/CHF": "FX_IDC:USDCHF",
+            "USD/JPY": "FX_IDC:USDJPY",
+            "USD/ZAR": "FX_IDC:USDZAR"
+        };
+
 
         function createTradingViewWidget(symbol) {
+            console.log(`DEBUG: Initializing TradingView widget for symbol: ${symbol}`);
             if (tvWidget) {
+                console.log("DEBUG: Removing existing TradingView widget.");
                 tvWidget.remove(); // Remove existing widget if any
             }
             tvWidget = new TradingView.widget(
@@ -729,23 +749,21 @@
                     "popup_width": "1000",
                     "popup_height": "650",
                     "watchlist": [
-                        // Updated to include only the specified currency pairs
-                        "AUD/USD", "EUR/JPY", "EUR/USD", "GBP/JPY", "GBP/USD", "NZD/USD",
-                        "USD/BDT", "USD/BRL", "USD/CAD", "USD/CHF", "USD/JPY", "USD/ZAR"
+                        // Use the mapped symbols for the watchlist
+                        "FX_IDC:AUDUSD", "FX_IDC:EURJPY", "FX_IDC:EURUSD", "FX_IDC:GBPJPY", "FX_IDC:GBPUSD", "FX_IDC:NZDUSD",
+                        "FX_IDC:USDBDT", "FX_IDC:USDBRL", "FX_IDC:USDCAD", "FX_IDC:USDCHF", "FX_IDC:USDJPY", "FX_IDC:USDZAR"
                     ]
                 }
             );
+            console.log("DEBUG: TradingView widget initialization complete.");
         }
-
-        // Initialize widget on load
-        window.onload = function() {
-            startOnboardingSequence(); // Start the onboarding flow
-        };
 
         // Handle currency pair selection change
         document.getElementById('currency-pair-select').addEventListener('change', function() {
-            const selectedPair = this.value;
-            createTradingViewWidget(selectedPair);
+            const selectedPairKey = this.value; // e.g., "AUD/USD"
+            const selectedTradingViewSymbol = tradingViewSymbolMap[selectedPairKey] || selectedPairKey; // Get mapped symbol
+            console.log(`DEBUG: Selected pair: ${selectedPairKey}, mapped to TradingView symbol: ${selectedTradingViewSymbol}`);
+            createTradingViewWidget(selectedTradingViewSymbol);
         });
     </script>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
@@ -961,6 +979,7 @@
                 return;
             }
 
+            // Display initial "Signal Analysis in Progress..." if no signals are loaded yet
             if (Object.keys(currentSignals).length === 0 || Object.values(currentSignals).some(s => s.current_signal.result === "Data Error")) {
                 signalsGrid.innerHTML = `
                     <div class="signal-card p-4 rounded-xl border-glow-default col-span-full text-center">
@@ -980,6 +999,7 @@
             }
 
             try {
+                console.log("DEBUG: Attempting to fetch signals from backend...");
                 const response = await fetch(API_URL, {
                     headers: {
                         'Authorization': `Bearer ${token}` // Send token with request
@@ -994,11 +1014,13 @@
                     throw new Error(`Backend responded with status: ${response.status}`);
                 }
                 const fullSignalsData = await response.json(); 
+                console.log("DEBUG: Fetched signals data:", fullSignalsData);
                 
                 for (const pair in fullSignalsData) {
                     const newSignal = fullSignalsData[pair].current_signal;
                     const oldSignal = currentSignals[pair] ? currentSignals[pair].current_signal : null;
 
+                    // Play signal sound only when a new WAITING signal appears or changes from NONE to WAITING
                     if (newSignal.result === '⏳ WAITING' && 
                         (!oldSignal || oldSignal.result !== '⏳ WAITING' || oldSignal.direction === 'NONE')) {
                         showNewSignalNotification(newSignal.pair, newSignal.direction);
@@ -1032,6 +1054,7 @@
 
         // Function to update the signal cards on the UI
         function updateSignalsUI(fullSignalsData) {
+            console.log("DEBUG: Updating UI with signals...");
             signalsGrid.innerHTML = '';
             const pairs = Object.keys(fullSignalsData).sort();
             let highestPrioritySignal = null;
@@ -1233,6 +1256,7 @@
                  mobileSignalCard.className = 'signal-card p-4 rounded-xl border-glow-default text-center';
             }
 
+            // Ensure the default "Signal Analysis in Progress..." message is shown if no other signals are active
             const anyActiveOrCoolingDownResult = Object.values(fullSignalsData).some(pairData => {
                 const signal = pairData.current_signal;
                 const now = new Date();
@@ -1251,6 +1275,7 @@
                     </div>
                 `;
             }
+            console.log("DEBUG: UI update complete.");
         }
 
         // Function to update signal history
@@ -1751,7 +1776,7 @@
                     localStorage.setItem('mk_signal_token', data.token);
                     await showSuccessAnimation();
                     // Initialize dashboard functions after successful login
-                    createTradingViewWidget(defaultPair);
+                    createTradingViewWidget(tradingViewSymbolMap[document.getElementById('currency-pair-select').value] || defaultPair); // Initialize with selected or default
                     startCountdown();
                     fetchSignals();
                     setInterval(fetchSignals, 10000);
@@ -1782,6 +1807,7 @@
             const token = localStorage.getItem('mk_signal_token');
             if (token) {
                 try {
+                    console.log("DEBUG: Checking authentication status...");
                     const response = await fetch(CHECK_AUTH_API_URL, {
                         method: 'POST',
                         headers: {
@@ -1789,7 +1815,7 @@
                         }
                     });
                     if (response.ok) {
-                        console.log('User already authenticated. Redirecting to dashboard.');
+                        console.log('INFO: User already authenticated. Redirecting to dashboard.');
                         onboardingContainer.style.display = 'none';
                         loginContainer.style.display = 'none';
                         // Added null checks here
@@ -1801,7 +1827,7 @@
                         if (backgroundVideo) backgroundVideo.play(); // Play the video for the main interface, with null check
                         document.body.style.overflow = 'auto';
                         // Initialize dashboard functions
-                        createTradingViewWidget(defaultPair);
+                        createTradingViewWidget(tradingViewSymbolMap[document.getElementById('currency-pair-select').value] || defaultPair); // Initialize with selected or default
                         startCountdown();
                         fetchSignals();
                         setInterval(fetchSignals, 10000);
@@ -1810,12 +1836,12 @@
                         stopAmbientMusic(); // Stop ambient music if already logged in
                         return true; // Indicate that redirection happened
                     } else {
-                        console.log('Authentication failed or token expired. Proceeding to onboarding/login.');
+                        console.log('INFO: Authentication failed or token expired. Proceeding to onboarding/login.');
                         localStorage.removeItem('mk_signal_token'); // Clear invalid token
                         return false;
                     }
                 } catch (error) {
-                    console.error('Error checking authentication:', error);
+                    console.error('ERROR: Error checking authentication:', error);
                     localStorage.removeItem('mk_signal_token');
                     return false;
                 }
@@ -1824,7 +1850,7 @@
         }
 
         function logoutUser() {
-            console.log('Logging out user: Clearing JWT token from localStorage.'); // Added console log
+            console.log('INFO: Logging out user: Clearing JWT token from localStorage.'); // Added console log
             localStorage.removeItem('mk_signal_token');
             window.location.reload(); // Reload page to show onboarding/login screen
         }
@@ -1835,15 +1861,23 @@
         document.body.addEventListener('click', async () => {
             if (Tone.context.state !== 'running') {
                 await Tone.start();
-                console.log('AudioContext resumed successfully by user interaction.');
+                console.log('INFO: AudioContext resumed successfully by user interaction.');
             }
         }, { once: true });
 
         // Initial check on load
         window.onload = async function() {
-            const isAuthenticated = await checkAuthAndRedirect();
-            if (!isAuthenticated) {
-                startOnboardingSequence(); // If not authenticated, start onboarding
+            // This ensures TradingView script is loaded before trying to create widget
+            // The TradingView script is loaded via <script src="https://s3.tradingview.com/tv.js"></script>
+            // We need to wait for it to be ready.
+            if (typeof TradingView !== 'undefined' && TradingView.widget) {
+                const isAuthenticated = await checkAuthAndRedirect();
+                if (!isAuthenticated) {
+                    startOnboardingSequence(); // If not authenticated, start onboarding
+                }
+            } else {
+                console.warn("WARNING: TradingView script not yet loaded. Retrying initialization in 500ms.");
+                setTimeout(window.onload, 500); // Retry after a short delay
             }
         };
     </script>
