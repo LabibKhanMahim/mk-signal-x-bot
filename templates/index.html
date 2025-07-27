@@ -1022,7 +1022,7 @@
                     throw new Error(`Backend responded with status: ${response.status}`);
                 }
                 const fullSignalsData = await response.json(); 
-                console.log("DEBUG: Fetched signal data:", fullSignalsData);
+                console.log("DEBUG: Fetched signal data:", JSON.stringify(fullSignalsData, null, 2)); // Log the full data for debugging
                 
                 for (const pair in fullSignalsData) {
                     const newSignal = fullSignalsData[pair].current_signal;
@@ -1062,15 +1062,38 @@
 
         // Function to update the signal cards on the UI
         function updateSignalsUI(fullSignalsData) {
-            console.log("DEBUG: Updating UI with signals...");
-            signalsGrid.innerHTML = '';
-            const pairs = Object.keys(fullSignalsData).sort();
+            console.log("DEBUG: Updating UI with signals. Data received:", JSON.stringify(fullSignalsData, null, 2));
+            signalsGrid.innerHTML = ''; // Clear existing cards
+            const pairs = CURRENCY_PAIRS_FRONTEND; // Use the predefined list of pairs
             let highestPrioritySignal = null;
             let highestPriority = -1;
 
             pairs.forEach(pair => {
-                const pairData = fullSignalsData[pair];
-                const signal = pairData.current_signal;
+                // Default signal structure for pairs not found in fullSignalsData or in an 'empty' state
+                const defaultSignal = { 
+                    pair: pair, 
+                    direction: 'NONE', 
+                    result: 'No Signal', 
+                    signal_generated_at: 'N/A', 
+                    entry_time: 'N/A', 
+                    expiry_time: 'N/A', 
+                    confidence: 'N/A', 
+                    expiry_timestamp: 0, 
+                    reason: '' 
+                };
+                const defaultPairData = { 
+                    current_signal: defaultSignal, 
+                    is_resting: false, 
+                    rest_end_time: 0,
+                    result_display_end_time: 0
+                };
+
+                // Get pair data, or use default if not available
+                const pairData = fullSignalsData[pair] || defaultPairData;
+                const signal = pairData.current_signal || defaultSignal; // Ensure signal object exists
+
+                console.log(`DEBUG: Processing pair: ${pair}, Signal:`, JSON.stringify(signal, null, 2), `Is Resting: ${pairData.is_resting}`);
+
                 const now = new Date();
                 const expiryTime = new Date(signal.expiry_timestamp * 1000);
 
@@ -1104,11 +1127,13 @@
                         currentResultTextClass = 'text-gray-400 text-xl';
                         resultText = 'RESTING';
                     } else {
+                        // If resting time is over, treat as no signal
                         currentBorderClass = 'border-glow-default';
                         currentEmoji = '🚫';
                         currentResultTextClass = 'text-gray-500 text-xl';
                         currentStatusText = 'Status:';
                         resultText = 'No Signal';
+                        currentCountdownHtml = `<p class="text-base text-gray-300">Waiting for signal...</p>`;
                     }
                     clientDisplayState[pair] = { signal_id: null, result: null, sound_played: { win: false, loss: false } };
 
@@ -1181,6 +1206,7 @@
                         currentResultTextClass = 'text-yellow-400 text-3xl';
                         currentStatusText = 'Status:';
                         resultText = 'WAITING (No Expiry Data)';
+                        currentCountdownHtml = `<p class="text-base text-gray-300">Waiting for signal...</p>`;
                     }
                     clientDisplayState[pair] = { signal_id: signal.signal_id, result: signal.result, sound_played: { win: false, loss: false } };
 
@@ -1192,13 +1218,14 @@
                     resultText = 'Data Error';
                     currentCountdownHtml = `<p class="text-base text-gray-300">Please check backend.</p>`;
                     clientDisplayState[pair] = { signal_id: signal.signal_id, result: signal.result, sound_played: { win: false, loss: false } };
-                } else { // No Signal
+                } else { // No Signal or NONE direction
                     currentBorderClass = 'border-glow-default';
-                    currentEmoji = '?';
+                    currentEmoji = '🚫';
                     currentResultTextClass = 'text-gray-500 text-xl';
                     currentStatusText = 'Status:';
                     resultText = 'No Signal';
-                    clientDisplayState[pair] = { signal_id: signal.signal_id, result: signal.result, sound_played: { win: false, loss: false } };
+                    currentCountdownHtml = `<p class="text-base text-gray-300">Waiting for signal...</p>`;
+                    clientDisplayState[pair] = { signal_id: null, result: null, sound_played: { win: false, loss: false } };
                 }
 
                 if (shouldPlayWinSound) {
@@ -1241,7 +1268,7 @@
                     currentPriority = 3;
                 } else if (pairData.is_resting) {
                     currentPriority = 2;
-                } else if (currentDisplaySignal.result === 'No Signal' || currentDisplaySignal.result === 'Data Error') {
+                } else if (currentDisplaySignal.result === 'No Signal' || currentDisplaySignal.result === 'Data Error' || currentDisplaySignal.direction === 'NONE') {
                     currentPriority = 1;
                 }
 
@@ -1262,25 +1289,6 @@
                     </div>
                 `;
                  mobileSignalCard.className = 'signal-card p-4 rounded-xl border-glow-default text-center';
-            }
-
-            const anyActiveOrCoolingDownResult = Object.values(fullSignalsData).some(pairData => {
-                const signal = pairData.current_signal;
-                const now = new Date();
-                const resultDisplayEndTime = pairData.result_display_end_time ? new Date(pairData.result_display_end_time).getTime() : 0;
-
-                return signal.result === '⏳ WAITING' || 
-                       pairData.is_resting || 
-                       ((signal.result === '✅ WIN' || signal.result === '❌ LOSS') && now.getTime() < resultDisplayEndTime);
-            });
-
-            if (!anyActiveOrCoolingDownResult && signalsGrid.children.length === 0) {
-                signalsGrid.innerHTML = `
-                    <div class="signal-card p-4 rounded-xl border-glow-default col-span-full text-center">
-                        <p class="text-gray-400 text-lg shimmer-effect glitch-text">Signal Analysis in Progress...</p>
-                        <p class="text-gray-500 text-sm mt-2">AI is searching for high-confidence trades. Please wait.</p>
-                    </div>
-                `;
             }
             console.log("DEBUG: UI update complete.");
         }
@@ -1309,7 +1317,7 @@
                 }
             });
             
-            signalHistory = signalHistory.slice(0, 10);
+            signalHistory = signalHistory.slice(0, 10); // Keep only the last 10 signals
 
             if (signalHistory.length === 0) {
                 signalHistoryContainer.innerHTML = '<p class="text-gray-500 text-center">No history yet.</p>';
@@ -1857,7 +1865,7 @@
         }
 
         function logoutUser() {
-            console.log('INFO: Logging out user: Clearing JWT token from localStorage.'); // Added console log
+            console.log('INFO: Logging out user: Clearing JWT token from localStorage.');
             localStorage.removeItem('mk_signal_token');
             window.location.reload(); // Reload page to show onboarding/login screen
         }
