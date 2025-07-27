@@ -8,8 +8,8 @@ import time
 import json # For handling JSONDecodeError
 import requests # REQUIRED: For making HTTP requests to TwelveData API
 import math   # REQUIRED: For mathematical operations in indicators
-import traceback # For detailed error logging
 import os # Import os to access environment variables
+import traceback # For detailed error logging
 
 app = Flask(__name__)
 # CORS Configuration: Allowing all origins for testing purposes.
@@ -36,7 +36,11 @@ TWELVEDATA_BASE_URL = 'https://api.twelvedata.com'
 # Configuration for Flask (adjust host/port if running locally)
 # Use PORT environment variable for Render, default to 5000 for local development
 FLASK_HOST = '0.0.0.0' # Listen on all available interfaces
-FLASK_PORT = int(os.environ.get('PORT', 5000))
+FLASK_PORT = int(os.environ.get('PORT', 5000)) # Render will provide 'PORT' env variable
+
+# Global cache for TwelveData API responses
+TWELVEDATA_CACHE = {}
+CACHE_DURATION_SECONDS = 60 # Cache data for 60 seconds
 
 # List of currency pairs to monitor - UPDATED TO USER'S SPECIFIC LIST
 CURRENCY_PAIRS = [
