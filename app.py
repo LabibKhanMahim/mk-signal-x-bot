@@ -329,7 +329,7 @@ def mk_pro_generate_signal(data, pair_symbol):
     bull_reasons = []
 
     # 1. EMA10 > EMA30 for UP
-    if ema10 > ema30:
+    if ema10 is not None and ema30 is not None and ema10 > ema30:
         bull_conditions_met += 1
         bull_reasons.append("EMA10 > EMA30 (Bullish Trend)")
 
@@ -366,7 +366,7 @@ def mk_pro_generate_signal(data, pair_symbol):
     bear_reasons = []
 
     # 1. EMA10 < EMA30 for DOWN
-    if ema10 < ema30:
+    if ema10 is not None and ema30 is not None and ema10 < ema30:
         bear_conditions_met += 1
         bear_reasons.append("EMA10 < EMA30 (Bearish Trend)")
 
@@ -741,9 +741,11 @@ def signal_generation_loop():
     Fetches data and generates signals periodically for each pair, respecting rest periods.
     This runs in a separate thread.
     """
-    print("Signal generation loop starting...")
-    for pair in CURRENCY_PAIRS:
-        with signals_lock: # Acquire lock for initial signals dictionary setup
+    print("INFO: Signal generation loop starting...")
+    
+    # Initialize signals dictionary for all pairs
+    with signals_lock:
+        for pair in CURRENCY_PAIRS:
             signals[pair] = {
                 "current_signal": {
                     "pair": pair,
@@ -755,50 +757,49 @@ def signal_generation_loop():
                     "result": "No Signal",
                     "entry_price": None,
                     "expiry_timestamp": 0,
-                    "reasons": ["No signal generated yet."],
-                    "reason": "No signal generated yet." # Initialize singular reason
+                    "reasons": ["Initializing..."], # Initial reason for display
+                    "reason": "Initializing..." 
                 },
                 "last_trade_finished_at": datetime.datetime.now() - datetime.timedelta(minutes=5), 
                 "last_signal_generated_at": datetime.datetime.now() - datetime.timedelta(minutes=2), 
-                "is_resting": False, # Initialize as False
-                "rest_end_time": datetime.datetime.now(), # Initialize
+                "is_resting": False, 
+                "rest_end_time": datetime.datetime.now(), 
                 "result_display_end_time": datetime.datetime.now(),
-                "consecutive_losses": 0, # New: Track consecutive losses for this pair
-                "forced_wins_given": 0, # New: Track forced wins given for this pair
-                "signals_given_count": 0 # Initialize signals_given_count
+                "consecutive_losses": 0, 
+                "forced_wins_given": 0, 
+                "signals_given_count": 0 
             }
+    print("INFO: Initial signals dictionary populated with default states.")
 
     while True:
         try:
             current_time = datetime.datetime.now() 
+            print(f"\nINFO: Signal generation loop iteration started at {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
             
             # --- Step 1: Check and update expired WAITING signals and clear old results ---
             for pair in CURRENCY_PAIRS:
                 with signals_lock:
                     signal_data = signals[pair]["current_signal"]
-                    pair_state = signals[pair] # Get the full state for the pair
+                    pair_state = signals[pair] 
 
                 # Case 1: Signal was WAITING and has now expired
                 if signal_data["result"] == "⏳ WAITING" and signal_data["expiry_timestamp"] > 0 and signal_data["expiry_timestamp"] <= current_time.timestamp():
-                    print(f"DEBUG: Checking result for expired signal on {pair} (Expiry: {datetime.datetime.fromtimestamp(signal_data['expiry_timestamp']).strftime('%H:%M:%S')})...") 
+                    print(f"DEBUG: {pair}: WAITING signal expired. Checking result (Expiry: {datetime.datetime.fromtimestamp(signal_data['expiry_timestamp']).strftime('%H:%M:%S')})...") 
                     
-                    real_result = "UNKNOWN" # Store the actual calculated result
-                    result = "UNKNOWN" # This will be the displayed result (potentially manipulated)
+                    real_result = "UNKNOWN" 
+                    result = "UNKNOWN" 
                     result_reason_detail = ""
 
                     # Fetch latest candles to determine result (need at least 1 candle after expiry)
-                    # Fetch 2 candles: current (expiry) and previous to ensure we have the open/close of the expiry candle
-                    latest_candles_for_result = fetch_twelvedata_candles(pair.replace("/", ""), outputsize=2) # Use symbol without slash
+                    latest_candles_for_result = fetch_twelvedata_candles(pair.replace("/", ""), outputsize=2) 
                     
-                    if latest_candles_for_result and len(latest_candles_for_result) >= 1: # Only need the expiry candle itself
+                    if latest_candles_for_result and len(latest_candles_for_result) >= 1: 
                         expiry_candle = latest_candles_for_result[-1] 
                         expiry_open = float(expiry_candle['open'])
                         expiry_close = float(expiry_candle['close'])
                         expiry_candle_datetime = expiry_candle['datetime']
-                        entry_price_for_result = signal_data["entry_price"] # Get the stored entry price
+                        entry_price_for_result = signal_data["entry_price"] 
 
-                        original_reasons = signal_data.get('reasons', ['No specific reason provided for signal generation.'])
-                        
                         print(f"DEBUG:   {pair} - Expiry Candle Open: {expiry_open:.4f}, Expiry Candle Close: {expiry_close:.4f} (at {expiry_candle_datetime}), Direction: {signal_data['direction']}, Entry Price: {entry_price_for_result:.4f}")
 
                         if entry_price_for_result is None:
@@ -831,52 +832,44 @@ def signal_generation_loop():
                         print(f"ERROR: Could not fetch enough candles for {pair} to determine expiry result.")
 
                     # --- Result Manipulation Logic ---
-                    result = real_result # Start with the actual result
+                    result = real_result 
 
-                    with signals_lock: # Acquire lock before modifying signals[pair]
+                    with signals_lock: 
                         if real_result == "❌ LOSS":
                             signals[pair]["consecutive_losses"] += 1
-                            signals[pair]["forced_wins_given"] = 0 # Reset forced wins if a real loss occurs
+                            signals[pair]["forced_wins_given"] = 0 
                             print(f"DEBUG:   {pair} - Consecutive Losses: {signals[pair]['consecutive_losses']}")
 
-                            # If 4 or more consecutive losses, force 2 wins
                             if signals[pair]["consecutive_losses"] >= 4 and signals[pair]["forced_wins_given"] < 2:
-                                result = "✅ WIN" # Force it to be a WIN for display
+                                result = "✅ WIN" 
                                 signals[pair]["forced_wins_given"] += 1
-                                # Do NOT reset consecutive_losses here, as it's still a "real" loss
                                 result_reason_detail += " (FORCED WIN FOR DISPLAY - User Request)"
                                 print(f"DEBUG:   {pair} - FORCED WIN for display. Forced Wins Given: {signals[pair]['forced_wins_given']}")
                         elif real_result == "✅ WIN":
-                            signals[pair]["consecutive_losses"] = 0 # Reset consecutive losses on a real win
-                            signals[pair]["forced_wins_given"] = 0 # Reset forced wins on a real win
+                            signals[pair]["consecutive_losses"] = 0 
+                            signals[pair]["forced_wins_given"] = 0 
                             print(f"DEBUG:   {pair} - Real WIN. Consecutive Losses Reset.")
-                        else: # Data Error or N/A
-                            signals[pair]["consecutive_losses"] = 0 # Reset on data error or no direction
+                        else: 
+                            signals[pair]["consecutive_losses"] = 0 
                             signals[pair]["forced_wins_given"] = 0
                             print(f"DEBUG:   {pair} - Result N/A or Data Error. Consecutive Losses Reset.")
 
-                        signals[pair]["current_signal"]["result"] = result # Update with potentially manipulated result
-                        # Append the result reason to the existing reasons list
-                        # Ensure 'reasons' is a list before appending
+                        signals[pair]["current_signal"]["result"] = result 
                         if not isinstance(signals[pair]["current_signal"]["reasons"], list):
                             signals[pair]["current_signal"]["reasons"] = [str(signals[pair]["current_signal"]["reasons"])]
                         signals[pair]["current_signal"]["reasons"].append(f"Result: {result_reason_detail}")
-                        signals[pair]["current_signal"]["reason"] = f"{signal_data['reason']} | Result Logic: {result_reason_detail}" # Update singular reason
+                        signals[pair]["current_signal"]["reason"] = f"{signal_data['reason']} | Result Logic: {result_reason_detail}" 
                         signals[pair]["last_trade_finished_at"] = current_time
                         signals[pair]["result_display_end_time"] = current_time + datetime.timedelta(seconds=COOLDOWN_AFTER_RESULT_SECONDS) 
 
                         if signal_data["direction"] != "NONE":
-                            # Only increment signals_given_count if it was a valid signal (not NONE)
-                            # and if it was not already a WIN/LOSS (i.e., it just transitioned to WIN/LOSS)
-                            # This prevents double counting if the signal was already WIN/LOSS and just being displayed
-                            if signal_data["result"] in ["✅ WIN", "❌ LOSS"] and pair_state["current_signal"]["result"] not in ["✅ WIN", "❌ LOSS"]: # Check previous state
-                                signals[pair]["signals_given_count"] = signals[pair].get("signals_given_count", 0) + 1 # Initialize if not exists
-                                print(f"DEBUG: {pair}: Signals given since last rest: {signals[pair]['signals_given_count']}")
+                            signals[pair]["signals_given_count"] = signals[pair].get("signals_given_count", 0) + 1 
+                            print(f"DEBUG: {pair}: Signals given since last rest: {signals[pair]['signals_given_count']}")
 
-                        if signals[pair].get("signals_given_count", 0) >= 5: # Check signals_given_count
+                        if signals[pair].get("signals_given_count", 0) >= 5: 
                             signals[pair]["is_resting"] = True
                             signals[pair]["rest_end_time"] = current_time + datetime.timedelta(minutes=RESTING_PERIOD_MINUTES) 
-                            signals[pair]["signals_given_count"] = 0 # Reset count when entering rest
+                            signals[pair]["signals_given_count"] = 0 
                             print(f"DEBUG: {pair} has given 5 signals. Entering {RESTING_PERIOD_MINUTES}-minute rest until {signals[pair]['rest_end_time'].strftime('%H:%M:%S')}.")
                         else:
                             print(f"DEBUG: Updated result for {pair}: {result}. Displaying for {COOLDOWN_AFTER_RESULT_SECONDS} seconds.")
@@ -884,7 +877,6 @@ def signal_generation_loop():
                 # Case 2: Signal was WIN/LOSS and its display cooldown has ended
                 elif signal_data["result"] in ["✅ WIN", "❌ LOSS"] and current_time >= pair_state["result_display_end_time"]:
                     with signals_lock:
-                        # Reset the signal for the pair to "No Signal" so new signals can be generated
                         signals[pair]["current_signal"] = {
                             "pair": pair,
                             "signal_generated_at": "N/A",
@@ -898,7 +890,7 @@ def signal_generation_loop():
                             "reasons": ["Previous trade result displayed. Waiting for new signal."],
                             "reason": "Previous trade result displayed. Waiting for new signal."
                         }
-                        signals[pair]["last_signal_generated_at"] = current_time # Mark this time for eligibility check
+                        signals[pair]["last_signal_generated_at"] = current_time 
                     print(f"DEBUG: Cleared displayed result for {pair}. Now 'No Signal' state.")
 
                 # Case 3: Pair is resting and rest period has ended
@@ -906,7 +898,6 @@ def signal_generation_loop():
                     with signals_lock:
                         signals[pair]["is_resting"] = False
                         print(f"DEBUG: {pair} rest period over. Now eligible for new signal generation.")
-                        # Reset signal state for the pair
                         signals[pair]["current_signal"] = {
                             "pair": pair,
                             "signal_generated_at": "N/A",
@@ -921,59 +912,52 @@ def signal_generation_loop():
                             "reason": "Rest period ended. Waiting for new signal."
                         }
                         signals[pair]["last_signal_generated_at"] = current_time
-                        signals[pair]["result_display_end_time"] = current_time # Clear result display cooldown
+                        signals[pair]["result_display_end_time"] = current_time 
                         signals[pair]["consecutive_losses"] = 0
                         signals[pair]["forced_wins_given"] = 0
 
 
             # --- Step 2: Identify eligible pairs for new signal generation ---
             potential_signals_for_this_iteration = []
-            with signals_lock: # Acquire lock before reading signals for active_waiting_signals_count
+            with signals_lock: 
                 active_waiting_signals_count = sum(1 for p_data in signals.values() if p_data["current_signal"]["result"] == "⏳ WAITING")
             print(f"DEBUG: Current active WAITING signals count: {active_waiting_signals_count} (Max allowed: {MAX_ACTIVE_SIGNALS})")
 
             for pair in CURRENCY_PAIRS:
-                with signals_lock: # Acquire lock before accessing pair's signal data
-                    pair_signals_data = signals[pair] # Get a reference to the pair's data
+                with signals_lock: 
+                    pair_signals_data = signals[pair] 
                 
-                # Check resting status (already handled in Step 1, but re-check for clarity)
                 if pair_signals_data["is_resting"]:
                     print(f"DEBUG: {pair}: Still resting until {pair_signals_data['rest_end_time'].strftime('%H:%M:%S')}.")
-                    continue # Skip this pair, it's resting
+                    continue 
 
-                # Check result display cooldown (already handled in Step 1, but re-check for clarity)
                 if pair_signals_data["current_signal"]["result"] in ["✅ WIN", "❌ LOSS"] and \
                    current_time < pair_signals_data["result_display_end_time"]:
                     print(f"DEBUG: {pair}: Result '{pair_signals_data['current_signal']['result']}' is still being displayed (backend). Waiting for display cooldown to end.")
-                    continue # Skip this pair, result is still being displayed
+                    continue 
 
-                # Check global active signals limit
                 if active_waiting_signals_count >= MAX_ACTIVE_SIGNALS: 
                     print(f"DEBUG: Maximum active signals ({MAX_ACTIVE_SIGNALS}) reached. Skipping new signal generation for {pair}.")
-                    continue # Skip this pair, too many active signals globally
+                    continue 
 
-                # Check time since last signal attempt for this specific pair
                 time_since_last_attempt = current_time - pair_signals_data["last_signal_generated_at"]
-                if time_since_last_attempt.total_seconds() >= (SIGNAL_INTERVAL_MINUTES * 60): # Check every SIGNAL_INTERVAL_MINUTES
+                if time_since_last_attempt.total_seconds() >= (SIGNAL_INTERVAL_MINUTES * 60): 
                     print(f"DEBUG: Attempting to fetch candles for {pair}...")
-                    candles = fetch_twelvedata_candles(pair.replace("/", ""), outputsize=250) # Fetch enough candles for all indicators
+                    candles = fetch_twelvedata_candles(pair.replace("/", ""), outputsize=250) 
                     
                     if candles:
                         new_signal = analyze_and_generate_signal(pair, candles)
-                        # Only append to potential signals if a valid direction is given
                         if new_signal["direction"] != "NONE":
                             potential_signals_for_this_iteration.append({
                                 "pair": pair,
                                 "signal_data": new_signal,
-                                "analysis_time": current_time, # Store when analysis was done for prioritization
+                                "analysis_time": current_time, 
                                 "bull_conditions": new_signal.get("bull_conditions_met", 0),
                                 "bear_conditions": new_signal.get("bear_conditions_met", 0),
-                                "confidence_level": ["LOW", "MEDIUM", "HIGH"].index(new_signal["confidence"]) # For sorting
+                                "confidence_level": ["LOW", "MEDIUM", "HIGH"].index(new_signal["confidence"]) 
                             })
                             print(f"DEBUG: Potential signal generated for {pair}: {new_signal}")
                         else:
-                            # If no signal is generated, and the current signal is NOT WAITING, update it to "No Signal"
-                            # This prevents overwriting an active WAITING signal with "No Signal"
                             if pair_signals_data["current_signal"]["result"] != "⏳ WAITING":
                                 with signals_lock:
                                     signals[pair]["current_signal"] = new_signal
@@ -982,8 +966,7 @@ def signal_generation_loop():
                             else:
                                 print(f"DEBUG: No new signal generated for {pair}, but existing WAITING signal is active. Not overwriting. Reason: {new_signal['reason']}")
                     else:
-                        with signals_lock: # Acquire lock before modifying signals[pair]
-                            # Handle data fetch error for the pair
+                        with signals_lock: 
                             signals[pair]["current_signal"] = {
                                 "pair": pair,
                                 "signal_generated_at": datetime.datetime.now().strftime("%H:%M:%S"), 
@@ -995,38 +978,36 @@ def signal_generation_loop():
                                 "entry_price": None,
                                 "expiry_timestamp": 0,
                                 "reasons": ["Could not fetch market data."],
-                                "reason": "Could not fetch market data." # Initialize singular reason
+                                "reason": "Could not fetch market data." 
                             }
                             signals[pair]["last_signal_generated_at"] = current_time
-                            signals[pair]["consecutive_losses"] = 0 # Reset on data error
-                            signals[pair]["forced_wins_given"] = 0 # Reset on data error
+                            signals[pair]["consecutive_losses"] = 0 
+                            signals[pair]["forced_wins_given"] = 0 
                             print(f"ERROR: Failed to fetch candles for {pair} from TwelveData API. Setting 'Data Error' status.")
                 else:
                     print(f"DEBUG: {pair}: Not yet eligible for new signal (last attempt {time_since_last_attempt.total_seconds():.0f}s ago). Needs {SIGNAL_INTERVAL_MINUTES*60}s.")
 
             # --- Step 3: Select and activate top signals from potential candidates ---
-            # Sort by confidence (desc), then by number of conditions met (desc), then by analysis time (asc)
             potential_signals_for_this_iteration.sort(key=lambda x: (x["confidence_level"], max(x["bull_conditions"], x["bear_conditions"]), -x["analysis_time"].timestamp()), reverse=True)
             
             signals_to_activate = []
             for potential_signal_entry in potential_signals_for_this_iteration:
                 if len(signals_to_activate) < MAX_ACTIVE_SIGNALS:
-                    with signals_lock: # Acquire lock before reading signals for current_pair_status
+                    with signals_lock: 
                         current_pair_status = signals[potential_signal_entry["pair"]]["current_signal"]["result"]
                         is_resting = signals[potential_signal_entry["pair"]]["is_resting"]
                     
-                    # Ensure it's not currently WAITING for a trade and not resting
                     if current_pair_status != "⏳ WAITING" and not is_resting: 
                         signals_to_activate.append(potential_signal_entry)
                     else:
                         print(f"DEBUG: Skipping {potential_signal_entry['pair']} as it became ineligible during selection phase (status: {current_pair_status}, resting: {is_resting}).")
                 else:
-                    break # Max active signals reached
+                    break 
 
             for signal_entry in signals_to_activate:
                 pair = signal_entry["pair"]
                 new_signal = signal_entry["signal_data"]
-                with signals_lock: # Acquire lock before modifying signals[pair]
+                with signals_lock: 
                     signals[pair]["current_signal"] = new_signal
                     signals[pair]["last_signal_generated_at"] = datetime.datetime.now() 
                 print(f"INFO: Activated signal for {pair}: {new_signal}")
@@ -1034,13 +1015,12 @@ def signal_generation_loop():
             if not signals_to_activate and not potential_signals_for_this_iteration:
                 print("INFO: No new high-confidence signals generated in this iteration.")
 
-            # Sleep for a short period to allow the loop to run continuously and check for updates
-            time.sleep(3) # Changed to 3 seconds for faster analysis loop
+            time.sleep(3) 
 
         except Exception as e:
             print(f"CRITICAL ERROR: An unexpected error occurred in signal_generation_loop: {e}")
-            traceback.print_exc() # Print full traceback for debugging
-            time.sleep(10) # Wait longer after an error before retrying
+            traceback.print_exc() 
+            time.sleep(10) 
 
 
 # --- Flask Routes ---
@@ -1055,7 +1035,7 @@ def login():
     """Handles user login with hardcoded email and OTP verification."""
     try:
         data = request.get_json()
-        if data is None: # Check if JSON body is missing or malformed
+        if data is None: 
             print("LOGIN ERROR: Request body is not valid JSON or is empty.")
             return jsonify({"success": False, "message": "Invalid request. Please send valid JSON."}), 400
 
@@ -1066,20 +1046,16 @@ def login():
             print(f"LOGIN ERROR: Missing email ({email}) or OTP ({otp_code}).")
             return jsonify({"success": False, "message": "Email and OTP are required."}), 400
 
-        # Check if the email exists in our hardcoded USERS
         if email not in USERS:
             print(f"LOGIN ERROR: Invalid email '{email}'. User not found.")
             return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
         
-        # Get the hardcoded OTP for the given email
         correct_otp = USERS[email]
 
-        # Verify OTP
         if correct_otp == otp_code:
-            # Generate JWT token
             token_payload = {
                 'email': email,
-                'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=8) # Token valid for 8 hours
+                'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=8) 
             }
             token = jwt.encode(token_payload, JWT_SECRET_KEY, algorithm="HS256")
             print(f"LOGIN INFO: Login Success for {email}.")
@@ -1089,11 +1065,11 @@ def login():
             return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
     except json.JSONDecodeError as e:
         print(f"LOGIN ERROR: JSON decoding failed. Raw request data: {request.data}. Error: {e}")
-        traceback.print_exc() # Print full traceback
+        traceback.print_exc() 
         return jsonify({"success": False, "message": "Invalid JSON format in request body."}), 400
     except Exception as e:
         print(f"LOGIN CRITICAL ERROR: An unexpected error occurred during login: {e}")
-        traceback.print_exc() # Print full traceback
+        traceback.print_exc() 
         return jsonify({"success": False, "message": "An internal server error occurred."}), 500
 
 @app.route('/api/check_auth', methods=['POST'])
@@ -1109,10 +1085,10 @@ def get_status():
 
 
 @app.route('/api/signal', methods=['GET'])
-@token_required # Protect this endpoint
+@token_required 
 def get_signals_api(current_user_email):
     """Returns the latest generated signals and their states to the frontend."""
-    with signals_lock: # Acquire lock before returning the global signals dictionary
+    with signals_lock: 
         print(f"INFO: User {current_user_email} is requesting signals. Current signals state: {json.dumps(signals, indent=2)}")
         return jsonify(signals)
 
@@ -1121,16 +1097,11 @@ def get_signals_api(current_user_email):
 if __name__ == '__main__':
     # Start the background signal generation thread
     signal_thread = threading.Thread(target=signal_generation_loop)
-    signal_thread.daemon = True # Allows the main thread to exit even if this thread is running
+    signal_thread.daemon = True 
     signal_thread.start()
 
-    # Give the thread a moment to initialize and fetch first signals
-    # This sleep is crucial for initial signal population before frontend requests
-    time.sleep(20) # Increased sleep to give more time for initial API calls and loop initialization
+    time.sleep(30) # Increased sleep to give more time for initial API calls and loop initialization
 
-    # Run the Flask app
-    # Render will set the PORT environment variable
-    port = int(os.environ.get("PORT", 5000)) # 5000 is a fallback for local testing
+    port = int(os.environ.get("PORT", 5000)) 
     print(f"Flask app starting on port {port}...")
-    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False) # debug=False for production
-
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
