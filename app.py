@@ -334,24 +334,26 @@ def mk_pro_generate_signal(data, pair_symbol):
         bull_reasons.append("EMA10 > EMA30 (Bullish Trend)")
 
     # 2. MACD histogram 3 bar rising confirmation
-    if latest_histogram > prev_histogram and prev_histogram > prev_prev_histogram and latest_histogram > 0:
-        bull_conditions_met += 1
-        bull_reasons.append("MACD Histogram Rising (3 bars) & Above 0")
+    if latest_histogram is not None and prev_histogram is not None and prev_prev_histogram is not None:
+        if latest_histogram > prev_histogram and prev_histogram > prev_prev_histogram and latest_histogram > 0:
+            bull_conditions_met += 1
+            bull_reasons.append("MACD Histogram Rising (3 bars) & Above 0")
 
     # 3. RSI > 63 as trend strength
-    if rsi > 63:
+    if rsi is not None and rsi > 63:
         bull_conditions_met += 1
         bull_reasons.append(f"RSI > 63 ({rsi:.2f}) (Strong Buy Pressure)")
 
     # 4. Volume spike condition (> 1.5x avg) - Prioritized
-    if volume > 1.5 * avg_volume:
+    if volume is not None and avg_volume is not None and avg_volume > 0 and volume > 1.5 * avg_volume:
         bull_conditions_met += 1
         bull_reasons.append(f"Volume Spike ({volume:.0f} > 1.5 * Avg {avg_volume:.0f})")
 
     # 5. Bollinger Band breakout (optional confirmation)
-    if current_candle_close > bb_upper and current_candle_body_percentage >= 45: # Use new 45% threshold
-        bull_conditions_met += 1
-        bull_reasons.append(f"BB Breakout UP (Price {current_candle_close:.4f} > BB Upper {bb_upper:.4f})")
+    if current_candle_close is not None and bb_upper is not None and current_candle_body_percentage >= 45: # Use new 45% threshold
+        if current_candle_close > bb_upper:
+            bull_conditions_met += 1
+            bull_reasons.append(f"BB Breakout UP (Price {current_candle_close:.4f} > BB Upper {bb_upper:.4f})")
 
     # Heikin Ashi clean confirmation (optional confirmation)
     if ha_current_candle and ha_prev_candle and \
@@ -369,24 +371,26 @@ def mk_pro_generate_signal(data, pair_symbol):
         bear_reasons.append("EMA10 < EMA30 (Bearish Trend)")
 
     # 2. MACD histogram 3 bar falling confirmation
-    if latest_histogram < prev_histogram and prev_histogram < prev_prev_histogram and latest_histogram < 0:
-        bear_conditions_met += 1
-        bear_reasons.append("MACD Histogram Falling (3 bars) & Below 0")
+    if latest_histogram is not None and prev_histogram is not None and prev_prev_histogram is not None:
+        if latest_histogram < prev_histogram and prev_histogram < prev_prev_histogram and latest_histogram < 0:
+            bear_conditions_met += 1
+            bear_reasons.append("MACD Histogram Falling (3 bars) & Below 0")
 
     # 3. RSI < 37 as trend strength
-    if rsi < 37:
+    if rsi is not None and rsi < 37:
         bear_conditions_met += 1
         bear_reasons.append(f"RSI < 37 ({rsi:.2f}) (Strong Sell Pressure)")
 
     # 4. Volume spike condition (> 1.5x avg) - Prioritized
-    if volume > 1.5 * avg_volume:
+    if volume is not None and avg_volume is not None and avg_volume > 0 and volume > 1.5 * avg_volume:
         bear_conditions_met += 1
         bear_reasons.append(f"Volume Spike ({volume:.0f} > 1.5 * Avg {avg_volume:.0f})")
 
     # 5. BB breakout (optional confirmation)
-    if current_candle_close < bb_lower and current_candle_body_percentage >= 45: # Use new 45% threshold
-        bear_conditions_met += 1
-        bear_reasons.append(f"BB Breakout DOWN (Price {current_candle_close:.4f} < BB Lower {bb_lower:.4f})")
+    if current_candle_close is not None and bb_lower is not None and current_candle_body_percentage >= 45: # Use new 45% threshold
+        if current_candle_close < bb_lower:
+            bear_conditions_met += 1
+            bear_reasons.append(f"BB Breakout DOWN (Price {current_candle_close:.4f} < BB Lower {bb_lower:.4f})")
 
     # Heikin Ashi clean confirmation (optional confirmation)
     if ha_current_candle and ha_prev_candle and \
@@ -428,7 +432,7 @@ def mk_pro_generate_signal(data, pair_symbol):
 
     # Add BB width caution to reasons if a signal is generated
     if final_signal != "NONE":
-        bb_width_ratio = (bb_upper - bb_lower) / close_price * 100
+        bb_width_ratio = (bb_upper - bb_lower) / close_price * 100 if close_price > 0 else 0
         if bb_width_ratio < 0.05:
             final_reasons.insert(0, f"CAUTION: Low BB Width ({bb_width_ratio:.2f}%) - Potential for limited movement")
     
@@ -685,11 +689,13 @@ def analyze_and_generate_signal(symbol, candles):
         signal_generation_time = datetime.datetime.now() 
         entry_time_dt = signal_generation_time + datetime.timedelta(minutes=1) # Entry 1 minute after signal generation
         expiry_time_dt = entry_time_dt + datetime.timedelta(minutes=1) # Expiry 1 minute after entry
+        # Ensure entry_price is set to the current_candle['close'] from the analysis
+        entry_price_value = current_candle['close'] 
 
         signal_data.update({
             "signal_generated_at": signal_generation_time.strftime("%H:%M:%S"),
             "entry_time": entry_time_dt.strftime("%H:%M:%S"),
-            "entry_price": strategy_data['close_price'], # Entry price is the close of the candle analyzed
+            "entry_price": entry_price_value, 
             "expiry_time": expiry_time_dt.strftime("%H:%M:%S"),
             "expiry_timestamp": expiry_time_dt.timestamp(),
         })
@@ -782,7 +788,7 @@ def signal_generation_loop():
 
                     # Fetch latest candles to determine result (need at least 1 candle after expiry)
                     # Fetch 2 candles: current (expiry) and previous to ensure we have the open/close of the expiry candle
-                    latest_candles_for_result = fetch_twelvedata_candles(pair, outputsize=2) 
+                    latest_candles_for_result = fetch_twelvedata_candles(pair.replace("/", ""), outputsize=2) # Use symbol without slash
                     
                     if latest_candles_for_result and len(latest_candles_for_result) >= 1: # Only need the expiry candle itself
                         expiry_candle = latest_candles_for_result[-1] 
@@ -851,6 +857,9 @@ def signal_generation_loop():
 
                         signals[pair]["current_signal"]["result"] = result # Update with potentially manipulated result
                         # Append the result reason to the existing reasons list
+                        # Ensure 'reasons' is a list before appending
+                        if not isinstance(signals[pair]["current_signal"]["reasons"], list):
+                            signals[pair]["current_signal"]["reasons"] = [str(signals[pair]["current_signal"]["reasons"])]
                         signals[pair]["current_signal"]["reasons"].append(f"Result: {result_reason_detail}")
                         signals[pair]["current_signal"]["reason"] = f"{signal_data['reason']} | Result Logic: {result_reason_detail}" # Update singular reason
                         signals[pair]["last_trade_finished_at"] = current_time
@@ -860,7 +869,7 @@ def signal_generation_loop():
                             # Only increment signals_given_count if it was a valid signal (not NONE)
                             # and if it was not already a WIN/LOSS (i.e., it just transitioned to WIN/LOSS)
                             # This prevents double counting if the signal was already WIN/LOSS and just being displayed
-                            if signal_data["result"] in ["✅ WIN", "❌ LOSS"] and prevClientState.result not in ["✅ WIN", "❌ LOSS"]:
+                            if signal_data["result"] in ["✅ WIN", "❌ LOSS"] and pair_state["current_signal"]["result"] not in ["✅ WIN", "❌ LOSS"]: # Check previous state
                                 signals[pair]["signals_given_count"] = signals[pair].get("signals_given_count", 0) + 1 # Initialize if not exists
                                 print(f"DEBUG: {pair}: Signals given since last rest: {signals[pair]['signals_given_count']}")
 
@@ -947,7 +956,7 @@ def signal_generation_loop():
                 time_since_last_attempt = current_time - pair_signals_data["last_signal_generated_at"]
                 if time_since_last_attempt.total_seconds() >= (SIGNAL_INTERVAL_MINUTES * 60): # Check every SIGNAL_INTERVAL_MINUTES
                     print(f"DEBUG: Attempting to fetch candles for {pair}...")
-                    candles = fetch_twelvedata_candles(pair, outputsize=250) # Fetch enough candles for all indicators
+                    candles = fetch_twelvedata_candles(pair.replace("/", ""), outputsize=250) # Fetch enough candles for all indicators
                     
                     if candles:
                         new_signal = analyze_and_generate_signal(pair, candles)
@@ -959,7 +968,7 @@ def signal_generation_loop():
                                 "analysis_time": current_time, # Store when analysis was done for prioritization
                                 "bull_conditions": new_signal.get("bull_conditions_met", 0),
                                 "bear_conditions": new_signal.get("bear_conditions_met", 0),
-                                "confidence_level": ["LOW", "MEDIUM", "HIGH", "VERY HIGH (100000% SURE)"].index(new_signal["confidence"]) # For sorting
+                                "confidence_level": ["LOW", "MEDIUM", "HIGH"].index(new_signal["confidence"]) # For sorting
                             })
                             print(f"DEBUG: Potential signal generated for {pair}: {new_signal}")
                         else:
@@ -1124,3 +1133,4 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000)) # 5000 is a fallback for local testing
     print(f"Flask app starting on port {port}...")
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False) # debug=False for production
+
