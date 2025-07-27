@@ -20,9 +20,10 @@ app = Flask(__name__)
 # and your backend is mk-signal-x-bot-1.onrender.com
 CORS(app, resources={r"/api/*": {"origins": [
     "https://mk-signal-x-bot.onrender.com",    # Your frontend URL
-    "https://mk-signal-x-bot-1.onrender.com",  # Your backend URL (if different from frontend)
+    "https://mk-signal-x-bot-rn76.onrender.com", # Updated backend URL from latest logs
     "http://localhost:8000",                   # For local testing
-    "http://127.0.0.1:5000"                    # Another common local testing address
+    "http://127.0.0.1:5000",                   # Another common local testing address
+    "http://192.168.0.193:5000"                # Added user's specific local IP for testing
 ]}})
 
 # Global variables to store signals and their last generation time
@@ -37,7 +38,7 @@ signals_lock = threading.Lock()
 # For local testing, a fallback list can be provided.
 API_KEYS = []
 for i in range(1, 6): # Assuming you might have up to 5 API keys (TWELVEDATA_API_KEY_1, TWELVEDATA_API_KEY_2, ...)
-    key = os.environ.get(f"TWELVEDATA_API_KEY_{i}") # Corrected: Removed extra 'a' at the end
+    key = os.environ.get(f"TWELVEDATA_API_KEY_{i}")
     if key:
         API_KEYS.append(key)
 
@@ -60,8 +61,8 @@ FLASK_PORT = int(os.environ.get("PORT", 5000)) # Use Render's PORT, fallback to 
 
 # JWT Secret Key (VERY IMPORTANT: Change this to a strong, random key in production)
 # Load JWT_SECRET_KEY from environment variable for production
-JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your_local_dev_fallback_secret_for_jwt_only") 
-# "your_local_dev_fallback_secret_for_jwt_only" should be a different, less sensitive key, for local dev only
+JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your_super_secret_jwt_key_here_12345_random_string_xyz") 
+# "your_super_secret_jwt_key_here_12345_random_string_xyz" should be a different, less sensitive key, for local dev only
 
 # User database (simulated) - ONLY THESE EMAILS AND OTPs WILL WORK
 USERS = {
@@ -754,12 +755,12 @@ def signal_generation_loop():
                 "rest_end_time": datetime.datetime.now(), # Initialize
                 "result_display_end_time": datetime.datetime.now(),
                 "consecutive_losses": 0, # New: Track consecutive losses for this pair
-                "forced_wins_given": 0 # New: Track forced wins given for this pair
+                "forced_wins_given": 0, # New: Track forced wins given for this pair
+                "signals_given_count": 0 # Initialize signals_given_count
             }
 
     while True:
         try:
-            # Re-fetch current time at the beginning of each loop iteration for accuracy
             current_time = datetime.datetime.now() 
             
             # --- Step 1: Check and update expired WAITING signals and clear old results ---
@@ -1024,6 +1025,7 @@ def signal_generation_loop():
             traceback.print_exc() # Print full traceback for debugging
             time.sleep(10) # Wait longer after an error before retrying
 
+
 # --- Flask Routes ---
 
 @app.route('/')
@@ -1034,31 +1036,48 @@ def home():
 @app.route('/api/login', methods=['POST'])
 def login():
     """Handles user login with hardcoded email and OTP verification."""
-    data = request.get_json()
-    email = data.get('email')
-    otp_code = data.get('otp_code')
+    try:
+        data = request.get_json()
+        if data is None: # Check if JSON body is missing or malformed
+            print("Login Error: Request body is not valid JSON or is empty.")
+            return jsonify({"success": False, "message": "Invalid request. Please send valid JSON."}), 400
 
-    if not email or not otp_code:
-        return jsonify({"success": False, "message": "Email and OTP are required."}), 400
+        email = data.get('email')
+        otp_code = data.get('otp_code')
 
-    # Check if the email exists in our hardcoded USERS
-    if email not in USERS:
-        return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
-    
-    # Get the hardcoded OTP for the given email
-    correct_otp = USERS[email]
+        if not email or not otp_code:
+            print(f"Login Error: Missing email ({email}) or OTP ({otp_code}).")
+            return jsonify({"success": False, "message": "Email and OTP are required."}), 400
 
-    # Verify OTP
-    if correct_otp == otp_code:
-        # Generate JWT token
-        token_payload = {
-            'email': email,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=8) # Token valid for 8 hours
-        }
-        token = jwt.encode(token_payload, JWT_SECRET_KEY, algorithm="HS256")
-        return jsonify({"success": True, "message": "Login successful!", "token": token}), 200
-    else:
-        return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
+        # Check if the email exists in our hardcoded USERS
+        if email not in USERS:
+            print(f"Login Error: Invalid email '{email}'. User not found.")
+            return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
+        
+        # Get the hardcoded OTP for the given email
+        correct_otp = USERS[email]
+
+        # Verify OTP
+        if correct_otp == otp_code:
+            # Generate JWT token
+            token_payload = {
+                'email': email,
+                'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=8) # Token valid for 8 hours
+            }
+            token = jwt.encode(token_payload, JWT_SECRET_KEY, algorithm="HS256")
+            print(f"Login Success for {email}.")
+            return jsonify({"success": True, "message": "Login successful!", "token": token}), 200
+        else:
+            print(f"Login Error: Invalid OTP '{otp_code}' for email '{email}'.")
+            return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
+    except json.JSONDecodeError as e:
+        print(f"Login Error: JSON decoding failed. Raw request data: {request.data}. Error: {e}")
+        traceback.print_exc() # Print full traceback
+        return jsonify({"success": False, "message": "Invalid JSON format in request body."}), 400
+    except Exception as e:
+        print(f"An unexpected error occurred during login: {e}")
+        traceback.print_exc() # Print full traceback
+        return jsonify({"success": False, "message": "An internal server error occurred."}), 500
 
 @app.route('/api/check_auth', methods=['POST'])
 @token_required
