@@ -352,7 +352,7 @@
         @keyframes vault-open-pulse {
             0% { transform: scale(1); text-shadow: 0 0 20px #06b6d4, 0 0 40px #06b6d4; }
             50% { transform: scale(1.1); text-shadow: 0 0 30px #06b6d4, 0 0 60px #06b6d4, 0 0 80px #a855f7; }
-            100% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.7), inset 0 0 20px rgba(217, 70, 182, 0.5); }
+            100% { transform: scale(1); text-shadow: 0 0 20px #06b6d4, 0 0 40px #06b6d4; }
         }
 
         .vault-text {
@@ -393,6 +393,7 @@
             background: linear-gradient(90deg, #1a1a1e 0%, #3a3a40 50%, #1a1a1e 100%); background-size: 200% 100%; animation: shimmer 2s infinite linear;
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; will-change: background-position;
         }
+        @keyframes pulse-glow { 0% { text-shadow: 0 0 5px #06b6d4; } 50% { text-shadow: 0 0 15px #06b6d4, 0 0 25px #06b6d4; } 100% { text-shadow: 0 0 5px #06b6d4; } }
         .pulse-glow-text { animation: pulse-glow 2s infinite ease-in-out; will-change: text-shadow; }
 
         .signal-card {
@@ -703,7 +704,7 @@
     <!-- TradingView Widget Script -->
     <script type="text/javascript">
         let tvWidget = null;
-        // Use a more robust default pair for TradingView
+        // Default pair for TradingView, changed to a common one
         const defaultPair = "FX_IDC:EURUSD"; 
 
         // Mapping for TradingView symbols
@@ -714,17 +715,17 @@
             "GBP/JPY": "FX_IDC:GBPJPY",
             "GBP/USD": "FX_IDC:GBPUSD",
             "NZD/USD": "FX_IDC:NZDUSD",
-            "USD/BDT": "FX_IDC:USDBDT", // Assuming FX_IDC for BDT, might need verification
-            "USD/BRL": "FX_IDC:USDBRL", // Assuming FX_IDC for BRL, might need verification
+            // Assuming FX_IDC for BDT and BRL, might need verification for actual data sources
+            "USD/BDT": "FX_IDC:USDBDT", 
+            "USD/BRL": "FX_IDC:USDBRL", 
             "USD/CAD": "FX_IDC:USDCAD",
             "USD/CHF": "FX_IDC:USDCHF",
             "USD/JPY": "FX_IDC:USDJPY",
             "USD/ZAR": "FX_IDC:USDZAR"
         };
 
-
         function createTradingViewWidget(symbol) {
-            console.log(`DEBUG: Initializing TradingView widget for symbol: ${symbol}`);
+            console.log(`DEBUG: Initializing TradingView widget for: ${symbol}`);
             if (tvWidget) {
                 console.log("DEBUG: Removing existing TradingView widget.");
                 tvWidget.remove(); // Remove existing widget if any
@@ -762,7 +763,7 @@
         document.getElementById('currency-pair-select').addEventListener('change', function() {
             const selectedPairKey = this.value; // e.g., "AUD/USD"
             const selectedTradingViewSymbol = tradingViewSymbolMap[selectedPairKey] || selectedPairKey; // Get mapped symbol
-            console.log(`DEBUG: Selected pair: ${selectedPairKey}, mapped to TradingView symbol: ${selectedTradingViewSymbol}`);
+            console.log(`DEBUG: Selected pair: ${selectedPairKey}, Mapped to TradingView symbol: ${selectedTradingViewSymbol}`);
             createTradingViewWidget(selectedTradingViewSymbol);
         });
     </script>
@@ -790,7 +791,7 @@
         const newSignalText = document.getElementById('new-signal-text');
         const celebrationOverlay = document.getElementById('celebration-overlay');
         const mainBotInterface = document.getElementById('main-bot-interface');
-        const logoutBtn = document.getElementById('logout-btn'); // Get the new logout button
+        const logoutBtn = document.getElementById('logout-btn'); // Logout button
 
         // Onboarding elements
         const onboardingContainer = document.getElementById('onboarding-container');
@@ -855,18 +856,18 @@
 
         let signalSynth = new Tone.Synth().toDestination();
         signalSynth.oscillator.type = "triangle"; signalSynth.envelope.attack = 0.01; signalSynth.envelope.decay = 0.2; signalSynth.envelope.sustain = 0.1; signalSynth.envelope.release = 0.5;
-        signalSynth.volume.value = 0; // Increased from default
+        signalSynth.volume.value = 0; // Adjusted from default
 
         let winSynth = new Tone.Synth().toDestination();
         winSynth.oscillator.type = "sine"; winSynth.envelope.attack = 0.02; winSynth.envelope.decay = 0.3; winSynth.envelope.sustain = 0.1; winSynth.envelope.release = 0.8;
-        winSynth.volume.value = 5; // Increased from default
+        winSynth.volume.value = 5; // Adjusted from default
 
         let lossSynth = new Tone.Synth().toDestination();
         lossSynth.oscillator.type = "sawtooth"; lossSynth.envelope.attack = 0.01; lossSynth.envelope.decay = 0.4; lossSynth.envelope.sustain = 0.1; lossSynth.envelope.release = 0.7;
-        lossSynth.volume.value = 0; // Increased from default
+        lossSynth.volume.value = 0; // Adjusted from default
 
         let celebrationSynth = new Tone.PolySynth().toDestination();
-        celebrationSynth.set({ oscillator: { type: "square" }, envelope: { attack: 0.05, decay: 0.5, sustain: 0.2, release: 1 }, volume: 5 }); // Increased from default
+        celebrationSynth.set({ oscillator: { type: "square" }, envelope: { attack: 0.05, decay: 0.5, sustain: 0.2, release: 1 }, volume: 5 }); // Adjusted from default
 
         // Sound playing functions
         function playSound(synth, notes, duration) {
@@ -923,7 +924,7 @@
                 ambientSynth.triggerAttackRelease(currentChord, "2n", time);
                 chordIndex++;
             }, "2n").start(0);
-            ambientSynth.volume.rampTo(-5, 3); // Adjusted rampTo volume
+            ambientSynth.volume.rampTo(-5, 3); // Adjusted volume
         }
 
         function stopAmbientMusic() {
@@ -1014,7 +1015,7 @@
                     throw new Error(`Backend responded with status: ${response.status}`);
                 }
                 const fullSignalsData = await response.json(); 
-                console.log("DEBUG: Fetched signals data:", fullSignalsData);
+                console.log("DEBUG: Fetched signal data:", fullSignalsData);
                 
                 for (const pair in fullSignalsData) {
                     const newSignal = fullSignalsData[pair].current_signal;
@@ -1630,7 +1631,7 @@
             loginContainer.style.display = 'none'; // Ensure login is hidden
             mainBotInterface.style.display = 'none'; // Ensure main interface is hidden
             
-            // Null check for global background elements before accessing style
+            // Null check for global background elements
             if (globalBackgroundImage) globalBackgroundImage.style.display = 'block';
             if (globalImageOverlay) globalImageOverlay.style.display = 'block';
             
@@ -1741,7 +1742,7 @@
             vaultUnlockOverlay.classList.remove('active');
             // Transition to dashboard
             loginContainer.style.display = 'none';
-            // Added null checks here
+            // Null check for global background elements
             if (globalBackgroundImage) globalBackgroundImage.style.display = 'none';
             if (globalImageOverlay) globalImageOverlay.style.display = 'none';
             
@@ -1818,7 +1819,7 @@
                         console.log('INFO: User already authenticated. Redirecting to dashboard.');
                         onboardingContainer.style.display = 'none';
                         loginContainer.style.display = 'none';
-                        // Added null checks here
+                        // Null check for global background elements
                         if (globalBackgroundImage) globalBackgroundImage.style.display = 'none';
                         if (globalImageOverlay) globalImageOverlay.style.display = 'none';
                         
@@ -1868,16 +1869,25 @@
         // Initial check on load
         window.onload = async function() {
             // This ensures TradingView script is loaded before trying to create widget
-            // The TradingView script is loaded via <script src="https://s3.tradingview.com/tv.js"></script>
-            // We need to wait for it to be ready.
-            if (typeof TradingView !== 'undefined' && TradingView.widget) {
-                const isAuthenticated = await checkAuthAndRedirect();
-                if (!isAuthenticated) {
-                    startOnboardingSequence(); // If not authenticated, start onboarding
-                }
-            } else {
-                console.warn("WARNING: TradingView script not yet loaded. Retrying initialization in 500ms.");
-                setTimeout(window.onload, 500); // Retry after a short delay
+            // We'll use a Promise-based approach to wait for the script to be ready
+            await new Promise(resolve => {
+                const script = document.createElement('script');
+                script.src = "https://s3.tradingview.com/tv.js";
+                script.onload = () => {
+                    console.log("INFO: TradingView script loaded successfully.");
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.error("ERROR: Failed to load TradingView script.");
+                    resolve(); // Resolve even on error to avoid blocking
+                };
+                document.head.appendChild(script);
+            });
+
+            // Now that TradingView script is likely loaded, proceed with auth check
+            const isAuthenticated = await checkAuthAndRedirect();
+            if (!isAuthenticated) {
+                startOnboardingSequence(); // If not authenticated, start onboarding
             }
         };
     </script>
