@@ -51,6 +51,9 @@ if not API_KEYS:
         "b1416d39de684b7fb099585fd486cce9",  # Backup Key 3
         "135338f748ac48a6a08bebaa0e0080bd"   # User's new API Key
     ]
+else:
+    print(f"INFO: Loaded {len(API_KEYS)} API keys from environment variables.")
+
 
 TWELVEDATA_BASE_URL = 'https://api.twelvedata.com'
 
