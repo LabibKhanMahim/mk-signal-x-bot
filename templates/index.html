@@ -627,20 +627,8 @@
                 <h2 class="text-2xl font-semibold text-cyan-400 mb-4">Live Market Chart</h2>
                 <div class="mb-4">
                     <label for="currency-pair-select" class="block text-gray-300 text-sm font-medium mb-2">Select Currency Pair:</label>
-                    <select id="currency-pair-select" class="w-full p-2 rounded-md bg-[#2a2a2e] border border-cyan-500 text-white focus:ring-2 focus:ring-cyan-400 placeholder-gray-400">
-                        <!-- Updated to include only the specified currency pairs -->
-                        <option value="AUD/USD">AUD/USD</option>
-                        <option value="EUR/JPY">EUR/JPY</option>
-                        <option value="EUR/USD">EUR/USD</option>
-                        <option value="GBP/JPY">GBP/JPY</option>
-                        <option value="GBP/USD">GBP/USD</option>
-                        <option value="NZD/USD">NZD/USD</option>
-                        <option value="USD/BDT">USD/BDT</option>
-                        <option value="USD/BRL">USD/BRL</option>
-                        <option value="USD/CAD">USD/CAD</option>
-                        <option value="USD/CHF">USD/CHF</option>
-                        <option value="USD/JPY">USD/JPY</option>
-                        <option value="USD/ZAR">USD/ZAR</option>
+                    <select id="currency-pair-select" class="w-full p-2 rounded-md bg-[#2a2a2e] border border-cyan-500 text-white focus:ring-2 focus:ring-cyan-400">
+                        <!-- Options will be dynamically populated by JavaScript -->
                     </select>
                 </div>
                 <div class="tradingview-widget-container rounded-lg overflow-hidden flex-grow">
@@ -704,8 +692,14 @@
     <!-- TradingView Widget Script -->
     <script type="text/javascript">
         let tvWidget = null;
-        // Default pair for TradingView, changed to a common one
-        const defaultPair = "FX_IDC:EURUSD"; 
+        // Default pair for TradingView, will be set after dynamic population
+        let defaultPair = "FX_IDC:EURUSD"; 
+
+        // List of currency pairs (must match CURRENCY_PAIRS in app.py)
+        const CURRENCY_PAIRS_FRONTEND = [
+            "AUD/USD", "EUR/JPY", "EUR/USD", "GBP/JPY", "GBP/USD", "NZD/USD",
+            "USD/BDT", "USD/BRL", "USD/CAD", "USD/CHF", "USD/JPY", "USD/ZAR"
+        ];
 
         // Mapping for TradingView symbols
         const tradingViewSymbolMap = {
@@ -715,7 +709,6 @@
             "GBP/JPY": "FX_IDC:GBPJPY",
             "GBP/USD": "FX_IDC:GBPUSD",
             "NZD/USD": "FX_IDC:NZDUSD",
-            // Assuming FX_IDC for BDT and BRL, might need verification for actual data sources
             "USD/BDT": "FX_IDC:USDBDT", 
             "USD/BRL": "FX_IDC:USDBRL", 
             "USD/CAD": "FX_IDC:USDCAD",
@@ -723,6 +716,24 @@
             "USD/JPY": "FX_IDC:USDJPY",
             "USD/ZAR": "FX_IDC:USDZAR"
         };
+
+        function populateCurrencyPairSelect() {
+            const selectElement = document.getElementById('currency-pair-select');
+            selectElement.innerHTML = ''; // Clear existing options
+
+            CURRENCY_PAIRS_FRONTEND.forEach(pair => {
+                const option = document.createElement('option');
+                option.value = pair;
+                option.textContent = pair;
+                selectElement.appendChild(option);
+            });
+
+            // Set the default pair to the first one in the list if available
+            if (CURRENCY_PAIRS_FRONTEND.length > 0) {
+                defaultPair = tradingViewSymbolMap[CURRENCY_PAIRS_FRONTEND[0]] || CURRENCY_PAIRS_FRONTEND[0];
+                selectElement.value = CURRENCY_PAIRS_FRONTEND[0]; // Select the first option
+            }
+        }
 
         function createTradingViewWidget(symbol) {
             console.log(`DEBUG: Initializing TradingView widget for: ${symbol}`);
@@ -749,11 +760,7 @@
                     "show_popup_button": true, // Show the 'Open Chart' button
                     "popup_width": "1000",
                     "popup_height": "650",
-                    "watchlist": [
-                        // Use the mapped symbols for the watchlist
-                        "FX_IDC:AUDUSD", "FX_IDC:EURJPY", "FX_IDC:EURUSD", "FX_IDC:GBPJPY", "FX_IDC:GBPUSD", "FX_IDC:NZDUSD",
-                        "FX_IDC:USDBDT", "FX_IDC:USDBRL", "FX_IDC:USDCAD", "FX_IDC:USDCHF", "FX_IDC:USDJPY", "FX_IDC:USDZAR"
-                    ]
+                    "watchlist": CURRENCY_PAIRS_FRONTEND.map(pair => tradingViewSymbolMap[pair] || pair) // Use mapped symbols for watchlist
                 }
             );
             console.log("DEBUG: TradingView widget initialization complete.");
@@ -924,7 +931,7 @@
                 ambientSynth.triggerAttackRelease(currentChord, "2n", time);
                 chordIndex++;
             }, "2n").start(0);
-            ambientSynth.volume.rampTo(-5, 3); // Adjusted volume
+            ambientSynth.volume.rampTo(-5, 3); // Adjusted rampTo volume
         }
 
         function stopAmbientMusic() {
@@ -1257,7 +1264,6 @@
                  mobileSignalCard.className = 'signal-card p-4 rounded-xl border-glow-default text-center';
             }
 
-            // Ensure the default "Signal Analysis in Progress..." message is shown if no other signals are active
             const anyActiveOrCoolingDownResult = Object.values(fullSignalsData).some(pairData => {
                 const signal = pairData.current_signal;
                 const now = new Date();
@@ -1777,7 +1783,7 @@
                     localStorage.setItem('mk_signal_token', data.token);
                     await showSuccessAnimation();
                     // Initialize dashboard functions after successful login
-                    createTradingViewWidget(tradingViewSymbolMap[document.getElementById('currency-pair-select').value] || defaultPair); // Initialize with selected or default
+                    createTradingViewWidget(defaultPair); // Use the defaultPair set by populateCurrencyPairSelect
                     startCountdown();
                     fetchSignals();
                     setInterval(fetchSignals, 10000);
@@ -1828,7 +1834,7 @@
                         if (backgroundVideo) backgroundVideo.play(); // Play the video for the main interface, with null check
                         document.body.style.overflow = 'auto';
                         // Initialize dashboard functions
-                        createTradingViewWidget(tradingViewSymbolMap[document.getElementById('currency-pair-select').value] || defaultPair); // Initialize with selected or default
+                        createTradingViewWidget(defaultPair); // Use the defaultPair set by populateCurrencyPairSelect
                         startCountdown();
                         fetchSignals();
                         setInterval(fetchSignals, 10000);
@@ -1868,6 +1874,8 @@
 
         // Initial check on load
         window.onload = async function() {
+            populateCurrencyPairSelect(); // Populate the dropdown first
+            
             // This ensures TradingView script is loaded before trying to create widget
             // We'll use a Promise-based approach to wait for the script to be ready
             await new Promise(resolve => {
