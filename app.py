@@ -689,6 +689,7 @@ def signal_generation_loop():
                 "consecutive_losses": 0, # New: Track consecutive losses for this pair
                 "forced_wins_given": 0 # New: Track forced wins given for this pair
             }
+    print(f"Signals initialized with {len(signals)} pairs.") # Added logging
 
     while True:
         try:
@@ -974,7 +975,8 @@ def get_status():
 def get_signals_api():
     """Returns the latest generated signals and their states to the frontend."""
     with signals_lock: # Acquire lock before returning the global signals dictionary
-        print(f"Frontend is requesting signals.")
+        # Added logging to show the size of the signals dictionary
+        print(f"Frontend is requesting signals. Current signals dict size: {len(signals.keys())} pairs.")
         return jsonify(signals)
 
 # --- Main Execution ---
@@ -987,7 +989,7 @@ if __name__ == '__main__':
 
     # Give the thread a moment to initialize and fetch first signals
     # This sleep is crucial for initial signal population before frontend requests
-    time.sleep(20) # Increased sleep to give more time for initial API calls and loop initialization
+    time.sleep(45) # Increased sleep to give more time for initial API calls and loop initialization
 
     # Run the Flask app
     print("Flask app starting...")
