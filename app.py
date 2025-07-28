@@ -8,7 +8,8 @@ import time
 import json # For handling JSONDecodeError
 import requests # REQUIRED: For making HTTP requests to TwelveData API
 import math   # REQUIRED: For mathematical operations in indicators
-import os # Import os to access environment variables
+# import jwt # For JWT handling - REMOVED: JWT is no longer used for authentication
+# from functools import wraps # REMOVED: Decorator is no longer used
 import traceback # For detailed error logging
 
 app = Flask(__name__)
@@ -34,9 +35,18 @@ API_KEYS = [
 TWELVEDATA_BASE_URL = 'https://api.twelvedata.com'
 
 # Configuration for Flask (adjust host/port if running locally)
-# Use PORT environment variable for Render, default to 5000 for local development
 FLASK_HOST = '0.0.0.0' # Listen on all available interfaces
-FLASK_PORT = int(os.environ.get('PORT', 5000)) # Render will provide 'PORT' env variable
+FLASK_PORT = 5000
+
+# JWT Secret Key (NOT USED ANYMORE, BUT KEPT FOR REFERENCE IF NEEDED IN FUTURE)
+# JWT_SECRET_KEY = "super_secret_mk_bot_key_!@#$2025_random_string_xyz"
+
+# User database (simulated) - REMOVED: No longer needed as authentication is removed
+# USERS = {
+#     "test@example.com": "123456",
+#     "mahimkhan@gmail.com": "1234",
+#     "mahimkhan.mahimkhan.526@facebook.com": "987654",
+# }
 
 # Global cache for TwelveData API responses
 TWELVEDATA_CACHE = {}
@@ -77,7 +87,7 @@ def calculate_rsi(prices, period):
     """Calculates Relative Strength Index (RSI)."""
     if not prices or len(prices) < period + 1:
         return []
-
+    
     gains = [0.0] * (len(prices) - 1)
     losses = [0.0] * (len(prices) - 1)
 
@@ -89,7 +99,7 @@ def calculate_rsi(prices, period):
             losses[i-1] = abs(change)
 
     rsi_values = []
-
+    
     if len(gains) < period:
         return []
 
@@ -100,73 +110,73 @@ def calculate_rsi(prices, period):
         rs = float('inf') if avg_gain > 0 else 0.0
     else:
         rs = avg_gain / avg_loss
-
+        
     rsi = 100 - (100 / (1 + rs))
     rsi_values.append(rsi)
 
     for i in range(period, len(gains)):
         avg_gain = ((avg_gain * (period - 1)) + gains[i]) / period
         avg_loss = ((avg_loss * (period - 1)) + losses[i]) / period
-
+        
         if avg_loss == 0:
             rs = float('inf') if avg_gain > 0 else 0.0
         else:
             rs = avg_gain / avg_loss
-
+            
         rsi = 100 - (100 / (1 + rs))
         rsi_values.append(rsi)
-
+    
     return rsi_values
 
 def calculate_macd(prices, fast_period, slow_period, signal_period):
     """Calculates Moving Average Convergence Divergence (MACD)."""
     if len(prices) < max(fast_period, slow_period) + signal_period:
         return [], [], []
-
+    
     ema_fast = calculate_ema(prices, fast_period)
     ema_slow = calculate_ema(prices, slow_period)
-
+    
     min_len_ema = min(len(ema_fast), len(ema_slow))
     if min_len_ema == 0: return [], [], []
 
     macd_line = [ema_fast[len(ema_fast) - min_len_ema + i] - ema_slow[len(ema_slow) - min_len_ema + i] for i in range(min_len_ema)]
-
+    
     signal_line = calculate_ema(macd_line, signal_period)
-
+    
     min_hist_len = min(len(macd_line), len(signal_line))
     if min_hist_len == 0: return macd_line, signal_line, []
 
     histogram = [macd_line[len(macd_line) - min_hist_len + i] - signal_line[len(signal_line) - min_hist_len + i] for i in range(min_hist_len)]
-
+    
     return macd_line, signal_line, histogram
 
 def calculate_bollinger_bands(prices, period, std_dev):
     """Calculates Bollinger Bands."""
     if not prices or len(prices) < period:
         return [], [], []
-
+    
     upper_band = []
     middle_band = []
     lower_band = []
-
+    
     for i in range(len(prices) - period + 1):
         window = prices[i:i+period]
         sma = sum(window) / period
         middle_band.append(sma)
-
+        
         variance = sum([(x - sma) ** 2 for x in window]) / period
         current_std_dev = math.sqrt(variance)
-
+        
         upper_band.append(sma + (current_std_dev * std_dev))
         lower_band.append(sma - (current_std_dev * std_dev))
-
+        
     return upper_band, middle_band, lower_band
 
 def calculate_average_volume(volumes, lookback_period=10):
     """Calculates the average volume over a lookback period."""
     if len(volumes) < lookback_period:
         return 0.0
-    return sum(volumes[-lookback_period:]) / average_volume
+    return sum(volumes[-lookback_period:]) / lookback_period
 
 def get_candle_type(candle_data):
     """
@@ -202,13 +212,13 @@ def get_heikin_ashi_candles(candles):
         return []
 
     ha_candles = []
-
+    
     first_candle = candles[0]
     ha_close = (float(first_candle['open']) + float(first_candle['high']) + float(first_candle['low']) + float(first_candle['close'])) / 4
     ha_open = (float(first_candle['open']) + float(first_candle['close'])) / 2
     ha_high = max(float(first_candle['high']), ha_open, ha_close)
     ha_low = min(float(first_candle['low']), ha_open, ha_close)
-
+    
     ha_candles.append({
         'datetime': first_candle['datetime'],
         'open': ha_open,
@@ -269,8 +279,8 @@ def mk_pro_generate_signal(data, pair_symbol):
     bull_conditions_met = 0
     bear_conditions_met = 0
 
-    # User-defined CONFIDENCE_THRESHOLD - REDUCED FOR MORE SIGNALS
-    CONFIDENCE_THRESHOLD = 0.50 # Changed from 0.60 to 0.50
+    # User-defined CONFIDENCE_THRESHOLD
+    CONFIDENCE_THRESHOLD = 0.60 
 
     # === Optimized Filters (Reduced unnecessary filters) ===
     # RSI Filter (Sideways Zone) - REMOVED completely as per user's request
@@ -280,8 +290,8 @@ def mk_pro_generate_signal(data, pair_symbol):
         reasons.append(f"CAUTION: Low BB Width ({(bb_width / close_price) * 100:.2f}%)")
         # Do NOT return here, continue processing. This is now a caution, not a blocker.
 
-    # Candle Body Percentage Filter: Reduced threshold to 30% for more signals
-    if current_candle_body_percentage < 30: # Changed from 45 to 30
+    # Candle Body Percentage Filter: Reduced threshold to 45%
+    if current_candle_body_percentage < 45: # Changed from 55 to 45
         reasons.append(f"FILTERED: Weak Candle Body ({current_candle_body_percentage:.2f}%)")
         return { "signal": "NONE", "confidence": "LOW", "reason": ", ".join(reasons), "reasons_list": reasons, "bull_conditions_met": 0, "bear_conditions_met": 0 }
 
@@ -310,7 +320,7 @@ def mk_pro_generate_signal(data, pair_symbol):
         bull_reasons.append(f"Volume Spike ({volume:.0f} > 1.5 * Avg {avg_volume:.0f})")
 
     # 5. Bollinger Band breakout (optional confirmation)
-    if current_candle_close > bb_upper and current_candle_body_percentage >= 30: # Use new 30% threshold
+    if current_candle_close > bb_upper and current_candle_body_percentage >= 45: # Use new 45% threshold
         bull_conditions_met += 1
         bull_reasons.append(f"BB Breakout UP (Price {current_candle_close:.4f} > BB Upper {bb_upper:.4f})")
 
@@ -320,7 +330,7 @@ def mk_pro_generate_signal(data, pair_symbol):
        ha_prev_candle['close'] > ha_prev_candle['open'] and ha_prev_candle['low'] == ha_prev_candle['open']:
         bull_conditions_met += 1
         bull_reasons.append("Heikin-Ashi: Last 2 candles clean green")
-
+    
     # === Bearish Conditions ===
     bear_reasons = []
 
@@ -345,7 +355,7 @@ def mk_pro_generate_signal(data, pair_symbol):
         bear_reasons.append(f"Volume Spike ({volume:.0f} > 1.5 * Avg {avg_volume:.0f})")
 
     # 5. BB breakout (optional confirmation)
-    if current_candle_close < bb_lower and current_candle_body_percentage >= 30: # Use new 30% threshold
+    if current_candle_close < bb_lower and current_candle_body_percentage >= 45: # Use new 45% threshold
         bear_conditions_met += 1
         bear_reasons.append(f"BB Breakout DOWN (Price {current_candle_close:.4f} < BB Lower {bb_lower:.4f})")
 
@@ -358,24 +368,25 @@ def mk_pro_generate_signal(data, pair_symbol):
 
     # === Final Signal Decision ===
     # Goal: More frequent signals with medium to high confidence.
-    # Prioritize EMA and MACD. If 1 or more conditions met, give signal for MEDIUM. If 2 or more for HIGH.
-
+    # Prioritize EMA and MACD. If 2 or more conditions met, give signal.
+    
     # Calculate overall confidence based on conditions met
     total_possible_conditions = 6 # EMA, MACD, Volume, RSI, BB, HA (all are conditions now, no hard filters except weak candle body)
     bull_confidence_score = bull_conditions_met / total_possible_conditions
     bear_confidence_score = bear_conditions_met / total_possible_conditions
 
-    # Modified logic to allow signals with at least 1 condition met for MEDIUM confidence
-    if bull_conditions_met >= 1 and bull_confidence_score >= CONFIDENCE_THRESHOLD and bear_conditions_met < 1: # Ensure no significant opposing signals
+    # "Focus on confidence stacking—2 or more confirmations = signal allowed."
+    # If 2 or more conditions are met AND confidence threshold is met.
+    if bull_conditions_met >= 2 and bull_confidence_score >= CONFIDENCE_THRESHOLD and bear_conditions_met < 2: # Ensure no significant opposing signals
         final_signal = "UP"
-        if bull_conditions_met >= 2 and bull_confidence_score >= 0.8: # High confidence if 2+ conditions and 80% or more score
+        if bull_confidence_score >= 0.8: # High confidence if 80% or more conditions met
             final_confidence = "HIGH"
         else:
             final_confidence = "MEDIUM"
         final_reasons = bull_reasons
-    elif bear_conditions_met >= 1 and bear_confidence_score >= CONFIDENCE_THRESHOLD and bull_conditions_met < 1: # Ensure no significant opposing signals
+    elif bear_conditions_met >= 2 and bear_confidence_score >= CONFIDENCE_THRESHOLD and bull_conditions_met < 2: # Ensure no significant opposing signals
         final_signal = "DOWN"
-        if bear_conditions_met >= 2 and bear_confidence_score >= 0.8: # High confidence if 2+ conditions and 80% or more score
+        if bear_confidence_score >= 0.8: # High confidence if 80% or more conditions met
             final_confidence = "HIGH"
         else:
             final_confidence = "MEDIUM"
@@ -391,7 +402,7 @@ def mk_pro_generate_signal(data, pair_symbol):
         bb_width_ratio = (bb_upper - bb_lower) / close_price * 100
         if bb_width_ratio < 0.05:
             final_reasons.insert(0, f"CAUTION: Low BB Width ({bb_width_ratio:.2f}%) - Potential for limited movement")
-
+    
     return {
         "signal": final_signal,
         "confidence": final_confidence,
@@ -408,11 +419,11 @@ def fetch_twelvedata_candles(symbol, interval="1min", outputsize=250):
     Fetches market candle data using multiple TwelveData API keys.
     If the first key fails (due to rate limit or error), the system auto-switches to the next key.
     """
-    now = datetime.datetime.now()
+    now = datetime.datetime.now() 
     with signals_lock: # Acquire lock before accessing TWELVEDATA_CACHE
         if symbol in TWELVEDATA_CACHE:
             cached_entry = TWELVEDATA_CACHE[symbol]
-            if now - cached_entry['timestamp'] < datetime.timedelta(seconds=CACHE_DURATION_SECONDS):
+            if now - cached_entry['timestamp'] < datetime.timedelta(seconds=CACHE_DURATION_SECONDS): 
                 print(f"Using cached data for {symbol} (fetched at {cached_entry['timestamp'].strftime('%H:%M:%S')})")
                 return cached_entry['data']
 
@@ -440,7 +451,7 @@ def fetch_twelvedata_candles(symbol, interval="1min", outputsize=250):
             if 'values' in data:
                 candles = []
                 # Iterate in reverse to get oldest to newest, as indicators expect this order
-                for item in reversed(data['values']):
+                for item in reversed(data['values']): 
                     try:
                         open_price = float(item.get('open', 0.0) or 0.0)
                         high_price = float(item.get('high', 0.0) or 0.0)
@@ -499,7 +510,7 @@ def analyze_and_generate_signal(symbol, candles):
     # EMA200 needs 200 candles. MACD needs 26+9-1 = 34 candles. RSI needs 7+1=8 candles. BB needs 20 candles.
     # Heikin Ashi needs at least 2 for "last 2 HA candles".
     # So, minimum 200 candles are required for robust analysis.
-    if not candles or len(candles) < 200:
+    if not candles or len(candles) < 200: 
         print(f"DEBUG: Not enough candles ({len(candles)}) for {symbol}. At least 200 are needed for robust signal generation.")
         return {
             "pair": symbol,
@@ -522,7 +533,7 @@ def analyze_and_generate_signal(symbol, candles):
 
     current_candle = candles[-1]
     prev_candle_data = candles[-2] # Used for prev_candle_type
-
+    
     # Calculate all indicators
     ema10_values = calculate_ema(close_prices, 10)
     ema30_values = calculate_ema(close_prices, 30)
@@ -540,7 +551,7 @@ def analyze_and_generate_signal(symbol, candles):
     latest_signal_line = signal_line_values[-1] if signal_line_values else None
     latest_bb_upper = bb_upper_values[-1] if bb_upper_values else None
     latest_bb_lower = bb_lower_values[-1] if bb_lower_values else None
-
+    
     latest_histogram = histogram_values[-1] if len(histogram_values) >= 1 else None
     prev_histogram = histogram_values[-2] if len(histogram_values) >= 2 else None
     prev_prev_histogram = histogram_values[-3] if len(histogram_values) >= 3 else None
@@ -550,22 +561,22 @@ def analyze_and_generate_signal(symbol, candles):
 
     current_volume = volumes[-1]
     avg_volume = calculate_average_volume(volumes, lookback_period=10)
-
+    
     # Calculate candle body percentage for current candle
     current_candle_body_size = abs(current_candle['close'] - current_candle['open'])
     current_candle_total_range = current_candle['high'] - current_candle['low']
     current_candle_body_percentage = (current_candle_body_size / current_candle_total_range) * 100 if current_candle_total_range > 0 else 0
 
     # Check if all necessary latest indicator values are available
-    if any(val is None for val in [latest_ema10, latest_ema30, latest_rsi,
-                                   latest_macd_line, latest_signal_line,
+    if any(val is None for val in [latest_ema10, latest_ema30, latest_rsi, 
+                                   latest_macd_line, latest_signal_line, 
                                    latest_bb_upper, latest_bb_lower,
                                    latest_histogram, prev_histogram, prev_prev_histogram,
-                                   ha_current_candle, ha_prev_candle]):
+                                   ha_current_candle, ha_prev_candle]): 
         print(f"DEBUG: Not all latest indicator values available for {symbol}. Skipping signal generation.")
         return {
             "pair": symbol,
-            "signal_generated_at": datetime.datetime.now().strftime("%H:%M:%S"),
+            "signal_generated_at": datetime.datetime.now().strftime("%H:%M:%S"), 
             "entry_time": "N/A",
             "expiry_time": "N/A",
             "direction": "NONE",
@@ -600,7 +611,7 @@ def analyze_and_generate_signal(symbol, candles):
         'ha_prev_candle': ha_prev_candle,
     }
 
-    print(f"\n--- Analysis for {symbol} ({datetime.datetime.now().strftime('%H:%M:%S')}) ---")
+    print(f"\n--- Analysis for {symbol} ({datetime.datetime.now().strftime('%H:%M:%S')}) ---") 
     print(f"  Close Price: {strategy_data['close_price']:.4f}")
     print(f"  EMA10: {strategy_data['ema10']:.4f}, EMA30: {strategy_data['ema30']:.4f}")
     print(f"  RSI: {strategy_data['rsi']:.2f}")
@@ -614,7 +625,7 @@ def analyze_and_generate_signal(symbol, candles):
 
 
     pro_signal_output = mk_pro_generate_signal(strategy_data, symbol)
-
+    
     direction = pro_signal_output["signal"]
     confidence = pro_signal_output["confidence"]
     reason = pro_signal_output["reason"]
@@ -642,7 +653,7 @@ def analyze_and_generate_signal(symbol, candles):
     }
 
     if direction != "NONE":
-        signal_generation_time = datetime.datetime.now()
+        signal_generation_time = datetime.datetime.now() 
         entry_time_dt = signal_generation_time + datetime.timedelta(minutes=1) # Entry 1 minute after signal generation
         expiry_time_dt = entry_time_dt + datetime.timedelta(minutes=1) # Expiry 1 minute after entry
 
@@ -653,7 +664,7 @@ def analyze_and_generate_signal(symbol, candles):
             "expiry_time": expiry_time_dt.strftime("%H:%M:%S"),
             "expiry_timestamp": expiry_time_dt.timestamp(),
         })
-
+    
     return signal_data
 
 
@@ -680,21 +691,20 @@ def signal_generation_loop():
                     "reasons": ["No signal generated yet."],
                     "reason": "No signal generated yet." # Initialize singular reason
                 },
-                "last_trade_finished_at": datetime.datetime.now() - datetime.timedelta(minutes=5),
-                "last_signal_generated_at": datetime.datetime.now() - datetime.timedelta(minutes=2),
+                "last_trade_finished_at": datetime.datetime.now() - datetime.timedelta(minutes=5), 
+                "last_signal_generated_at": datetime.datetime.now() - datetime.timedelta(minutes=2), 
                 "is_resting": False, # Initialize as False
                 "rest_end_time": datetime.datetime.now(), # Initialize
                 "result_display_end_time": datetime.datetime.now(),
                 "consecutive_losses": 0, # New: Track consecutive losses for this pair
                 "forced_wins_given": 0 # New: Track forced wins given for this pair
             }
-    print(f"Signals initialized with {len(signals)} pairs.") # Added logging
 
     while True:
         try:
             # Re-fetch current time at the beginning of each loop iteration for accuracy
-            current_time = datetime.datetime.now()
-
+            current_time = datetime.datetime.now() 
+            
             # --- Step 1: Check and update expired WAITING signals and clear old results ---
             for pair in CURRENCY_PAIRS:
                 with signals_lock:
@@ -703,25 +713,25 @@ def signal_generation_loop():
 
                 # Case 1: Signal was WAITING and has now expired
                 if signal_data["result"] == "⏳ WAITING" and signal_data["expiry_timestamp"] > 0 and signal_data["expiry_timestamp"] <= current_time.timestamp():
-                    print(f"Checking result for expired signal on {pair} (Expiry: {datetime.datetime.fromtimestamp(signal_data['expiry_timestamp']).strftime('%H:%M:%S')})...")
-
+                    print(f"Checking result for expired signal on {pair} (Expiry: {datetime.datetime.fromtimestamp(signal_data['expiry_timestamp']).strftime('%H:%M:%S')})...") 
+                    
                     real_result = "UNKNOWN" # Store the actual calculated result
                     result = "UNKNOWN" # This will be the displayed result (potentially manipulated)
                     result_reason_detail = ""
 
                     # Fetch latest candles to determine result (need at least 1 candle after expiry)
                     # Fetch 2 candles: current (expiry) and previous to ensure we have the open/close of the expiry candle
-                    latest_candles_for_result = fetch_twelvedata_candles(pair, outputsize=2)
-
+                    latest_candles_for_result = fetch_twelvedata_candles(pair, outputsize=2) 
+                    
                     if latest_candles_for_result and len(latest_candles_for_result) >= 1: # Only need the expiry candle itself
-                        expiry_candle = latest_candles_for_result[-1]
+                        expiry_candle = latest_candles_for_result[-1] 
                         expiry_open = float(expiry_candle['open'])
                         expiry_close = float(expiry_candle['close'])
                         expiry_candle_datetime = expiry_candle['datetime']
                         entry_price_for_result = signal_data["entry_price"] # Get the stored entry price
 
                         original_reasons = signal_data.get('reasons', ['No specific reason provided for signal generation.'])
-
+                        
                         print(f"  {pair} - Expiry Candle Open: {expiry_open:.4f}, Expiry Candle Close: {expiry_close:.4f} (at {expiry_candle_datetime}), Direction: {signal_data['direction']}, Entry Price: {entry_price_for_result:.4f}")
 
                         if entry_price_for_result is None:
@@ -783,7 +793,7 @@ def signal_generation_loop():
                         signals[pair]["current_signal"]["reasons"].append(f"Result: {result_reason_detail}")
                         signals[pair]["current_signal"]["reason"] = f"{signal_data['reason']} | Result Logic: {result_reason_detail}" # Update singular reason
                         signals[pair]["last_trade_finished_at"] = current_time
-                        signals[pair]["result_display_end_time"] = current_time + datetime.timedelta(seconds=COOLDOWN_AFTER_RESULT_SECONDS)
+                        signals[pair]["result_display_end_time"] = current_time + datetime.timedelta(seconds=COOLDOWN_AFTER_RESULT_SECONDS) 
 
                         if signal_data["direction"] != "NONE":
                             signals[pair]["signals_given_count"] = signals[pair].get("signals_given_count", 0) + 1 # Initialize if not exists
@@ -791,7 +801,7 @@ def signal_generation_loop():
 
                         if signals[pair].get("signals_given_count", 0) >= 5: # Check signals_given_count
                             signals[pair]["is_resting"] = True
-                            signals[pair]["rest_end_time"] = current_time + datetime.timedelta(minutes=RESTING_PERIOD_MINUTES)
+                            signals[pair]["rest_end_time"] = current_time + datetime.timedelta(minutes=RESTING_PERIOD_MINUTES) 
                             signals[pair]["signals_given_count"] = 0
                             print(f"{pair} has given 5 signals. Entering {RESTING_PERIOD_MINUTES}-minute rest until {signals[pair]['rest_end_time'].strftime('%H:%M:%S')}.")
                         else:
@@ -850,7 +860,7 @@ def signal_generation_loop():
             for pair in CURRENCY_PAIRS:
                 with signals_lock: # Acquire lock before accessing pair's signal data
                     pair_signals_data = signals[pair] # Get a reference to the pair's data
-
+                
                 # Check resting status (already handled in Step 1, but re-check for clarity)
                 if pair_signals_data["is_resting"]:
                     print(f"{pair}: Still resting until {pair_signals_data['rest_end_time'].strftime('%H:%M:%S')}.")
@@ -863,7 +873,7 @@ def signal_generation_loop():
                     continue # Skip this pair, result is still being displayed
 
                 # Check global active signals limit
-                if active_waiting_signals_count >= MAX_ACTIVE_SIGNALS:
+                if active_waiting_signals_count >= MAX_ACTIVE_SIGNALS: 
                     print(f"Maximum active signals ({MAX_ACTIVE_SIGNALS}) reached. Skipping new signal generation for {pair}.")
                     continue # Skip this pair, too many active signals globally
 
@@ -872,10 +882,9 @@ def signal_generation_loop():
                 if time_since_last_attempt.total_seconds() >= (SIGNAL_INTERVAL_MINUTES * 60): # Check every SIGNAL_INTERVAL_MINUTES
                     print(f"Attempting to fetch candles for {pair}...")
                     candles = fetch_twelvedata_candles(pair, outputsize=250) # Fetch enough candles for all indicators
-
+                    
                     if candles:
                         new_signal = analyze_and_generate_signal(pair, candles)
-                        # Only append to potential signals if a valid direction is given
                         if new_signal["direction"] != "NONE":
                             potential_signals_for_this_iteration.append({
                                 "pair": pair,
@@ -887,21 +896,17 @@ def signal_generation_loop():
                             })
                             print(f"Potential signal generated for {pair}: {new_signal}")
                         else:
-                            # If no signal is generated, and the current signal is NOT WAITING, update it to "No Signal"
-                            # This prevents overwriting an active WAITING signal with "No Signal"
-                            if pair_signals_data["current_signal"]["result"] != "⏳ WAITING":
-                                with signals_lock:
-                                    signals[pair]["current_signal"] = new_signal
-                                    signals[pair]["last_signal_generated_at"] = current_time
-                                print(f"No new signal generated for {pair}. Current state: {pair_signals_data['current_signal']['result']}. Reason: {new_signal['reason']}")
-                            else:
-                                print(f"No new signal generated for {pair}, but existing WAITING signal is active. Not overwriting. Reason: {new_signal['reason']}")
+                            with signals_lock: # Acquire lock before modifying signals[pair]
+                                # Update signal data even if no signal, to show "No Signal" and reason
+                                signals[pair]["current_signal"] = new_signal
+                                signals[pair]["last_signal_generated_at"] = current_time
+                                print(f"No signal generated for {pair}: {new_signal['reason']}") # This line now safe
                     else:
                         with signals_lock: # Acquire lock before modifying signals[pair]
                             # Handle data fetch error for the pair
                             signals[pair]["current_signal"] = {
                                 "pair": pair,
-                                "signal_generated_at": datetime.datetime.now().strftime("%H:%M:%S"),
+                                "signal_generated_at": datetime.datetime.now().strftime("%H:%M:%S"), 
                                 "entry_time": "N/A",
                                 "expiry_time": "N/A",
                                 "direction": "NONE",
@@ -922,16 +927,16 @@ def signal_generation_loop():
             # --- Step 3: Select and activate top signals from potential candidates ---
             # Sort by confidence (desc), then by number of conditions met (desc), then by analysis time (asc)
             potential_signals_for_this_iteration.sort(key=lambda x: (x["confidence_level"], max(x["bull_conditions"], x["bear_conditions"]), -x["analysis_time"].timestamp()), reverse=True)
-
+            
             signals_to_activate = []
             for potential_signal_entry in potential_signals_for_this_iteration:
                 if len(signals_to_activate) < MAX_ACTIVE_SIGNALS:
                     with signals_lock: # Acquire lock before reading signals for current_pair_status
                         current_pair_status = signals[potential_signal_entry["pair"]]["current_signal"]["result"]
                         is_resting = signals[potential_signal_entry["pair"]]["is_resting"]
-
+                    
                     # Ensure it's not currently WAITING for a trade and not resting
-                    if current_pair_status != "⏳ WAITING" and not is_resting:
+                    if current_pair_status != "⏳ WAITING" and not is_resting: 
                         signals_to_activate.append(potential_signal_entry)
                     else:
                         print(f"Skipping {potential_signal_entry['pair']} as it became ineligible during selection phase (status: {current_pair_status}, resting: {is_resting}).")
@@ -943,9 +948,9 @@ def signal_generation_loop():
                 new_signal = signal_entry["signal_data"]
                 with signals_lock: # Acquire lock before modifying signals[pair]
                     signals[pair]["current_signal"] = new_signal
-                    signals[pair]["last_signal_generated_at"] = datetime.datetime.now()
+                    signals[pair]["last_signal_generated_at"] = datetime.datetime.now() 
                 print(f"Activated signal for {pair}: {new_signal}")
-
+            
             if not signals_to_activate and not potential_signals_for_this_iteration:
                 print("No new high-confidence signals generated in this iteration.")
 
@@ -964,6 +969,43 @@ def home():
     """Serves the main HTML page."""
     return render_template('index.html')
 
+# REMOVED: Login route is no longer needed for authentication
+# @app.route('/api/login', methods=['POST'])
+# def login():
+#     """Handles user login with hardcoded email and OTP verification."""
+#     data = request.get_json()
+#     email = data.get('email')
+#     otp_code = data.get('otp_code')
+
+#     if not email or not otp_code:
+#         return jsonify({"success": False, "message": "Email and OTP are required."}), 400
+
+#     # Check if the email exists in our hardcoded USERS
+#     if email not in USERS:
+#         return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
+    
+#     # Get the hardcoded OTP for the given email
+#     correct_otp = USERS[email]
+
+#     # Verify OTP
+#     if correct_otp == otp_code:
+#         # Generate JWT token
+#         token_payload = {
+#             'email': email,
+#             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=8) # Token valid for 8 hours
+#         }
+#         token = jwt.encode(token_payload, JWT_SECRET_KEY, algorithm="HS256")
+#         return jsonify({"success": True, "message": "Login successful!", "token": token}), 200
+#     else:
+#         return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
+
+# REMOVED: Check auth route is no longer needed for authentication
+# @app.route('/api/check_auth', methods=['POST'])
+# @token_required
+# def check_auth(current_user_email):
+#     """Checks if the provided JWT token is valid."""
+#     return jsonify({"success": True, "message": f"Authenticated as {current_user_email}"}), 200
+
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """Returns a simple success message to indicate backend is alive."""
@@ -971,11 +1013,11 @@ def get_status():
 
 
 @app.route('/api/signal', methods=['GET'])
+# @token_required # REMOVED: No longer protected by token
 def get_signals_api():
     """Returns the latest generated signals and their states to the frontend."""
     with signals_lock: # Acquire lock before returning the global signals dictionary
-        # Added logging to show the size of the signals dictionary
-        print(f"Frontend is requesting signals. Current signals dict size: {len(signals.keys())} pairs.")
+        # print(f"User {current_user_email} is requesting signals.") # Removed user email print
         return jsonify(signals)
 
 # --- Main Execution ---
@@ -988,7 +1030,7 @@ if __name__ == '__main__':
 
     # Give the thread a moment to initialize and fetch first signals
     # This sleep is crucial for initial signal population before frontend requests
-    time.sleep(45) # Increased sleep to give more time for initial API calls and loop initialization
+    time.sleep(20) # Increased sleep to give more time for initial API calls and loop initialization
 
     # Run the Flask app
     print("Flask app starting...")
