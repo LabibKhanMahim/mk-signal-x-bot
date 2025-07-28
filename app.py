@@ -9,6 +9,7 @@ import json # For handling JSONDecodeError
 import requests # REQUIRED: For making HTTP requests to TwelveData API
 import math   # REQUIRED: For mathematical operations in indicators
 import traceback # For detailed error logging
+import os # Import the os module to access environment variables
 
 app = Flask(__name__)
 # CORS Configuration: Allowing all origins for testing purposes.
@@ -23,13 +24,23 @@ signals = {}
 signals_lock = threading.Lock()
 
 # TwelveData API Keys - MULTI-KEY FALLBACK SYSTEM
+# API Keys are now loaded from environment variables for security
 API_KEYS = [
-    "cec7d2af18454d2ba403e772bb66b6ee",  # Primary Key
-    "a43482aa74fb4fe394a3d2677b9426ed",  # Backup Key 1
-    "afc74a79cba3403da73ed309746e81ae",  # Backup Key 2
-    "b1416d39de684b7fb099585fd486cce9",  # Backup Key 3
-    "135338f748ac48a6a08bebaa0e0080bd"   # User's new API Key
+    os.environ.get("TWELVEDATA_API_KEY_1", "YOUR_DEFAULT_KEY_1"),
+    os.environ.get("TWELVEDATA_API_KEY_2", "YOUR_DEFAULT_KEY_2"),
+    os.environ.get("TWELVEDATA_API_KEY_3", "YOUR_DEFAULT_KEY_3"),
+    os.environ.get("TWELVEDATA_API_KEY_4", "YOUR_DEFAULT_KEY_4"),
+    os.environ.get("TWELVEDATA_API_KEY_5", "YOUR_DEFAULT_KEY_5")
 ]
+# Remove any 'YOUR_DEFAULT_KEY_X' if you don't want default fallbacks
+API_KEYS = [key for key in API_KEYS if key and "YOUR_DEFAULT_KEY" not in key]
+
+# Ensure there's at least one API key, otherwise the app won't function
+if not API_KEYS:
+    print("CRITICAL ERROR: No TwelveData API keys found in environment variables. Please set TWELVEDATA_API_KEY_1 to 5.")
+    # You might want to raise an exception or exit here in a real production app
+    # For now, we'll proceed, but API calls will fail.
+
 TWELVEDATA_BASE_URL = 'https://api.twelvedata.com'
 
 # Configuration for Flask (adjust host/port if running locally)
