@@ -8,8 +8,6 @@ import time
 import json # For handling JSONDecodeError
 import requests # REQUIRED: For making HTTP requests to TwelveData API
 import math   # REQUIRED: For mathematical operations in indicators
-# import jwt # For JWT handling - REMOVED: JWT is no longer used for authentication
-# from functools import wraps # REMOVED: Decorator is no longer used
 import traceback # For detailed error logging
 
 app = Flask(__name__)
@@ -37,16 +35,6 @@ TWELVEDATA_BASE_URL = 'https://api.twelvedata.com'
 # Configuration for Flask (adjust host/port if running locally)
 FLASK_HOST = '0.0.0.0' # Listen on all available interfaces
 FLASK_PORT = 5000
-
-# JWT Secret Key (NOT USED ANYMORE, BUT KEPT FOR REFERENCE IF NEEDED IN FUTURE)
-# JWT_SECRET_KEY = "super_secret_mk_bot_key_!@#$2025_random_string_xyz"
-
-# User database (simulated) - REMOVED: No longer needed as authentication is removed
-# USERS = {
-#     "test@example.com": "123456",
-#     "mahimkhan@gmail.com": "1234",
-#     "mahimkhan.mahimkhan.526@facebook.com": "987654",
-# }
 
 # Global cache for TwelveData API responses
 TWELVEDATA_CACHE = {}
@@ -969,43 +957,6 @@ def home():
     """Serves the main HTML page."""
     return render_template('index.html')
 
-# REMOVED: Login route is no longer needed for authentication
-# @app.route('/api/login', methods=['POST'])
-# def login():
-#     """Handles user login with hardcoded email and OTP verification."""
-#     data = request.get_json()
-#     email = data.get('email')
-#     otp_code = data.get('otp_code')
-
-#     if not email or not otp_code:
-#         return jsonify({"success": False, "message": "Email and OTP are required."}), 400
-
-#     # Check if the email exists in our hardcoded USERS
-#     if email not in USERS:
-#         return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
-    
-#     # Get the hardcoded OTP for the given email
-#     correct_otp = USERS[email]
-
-#     # Verify OTP
-#     if correct_otp == otp_code:
-#         # Generate JWT token
-#         token_payload = {
-#             'email': email,
-#             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=8) # Token valid for 8 hours
-#         }
-#         token = jwt.encode(token_payload, JWT_SECRET_KEY, algorithm="HS256")
-#         return jsonify({"success": True, "message": "Login successful!", "token": token}), 200
-#     else:
-#         return jsonify({"success": False, "message": "Invalid email or OTP. Please check your credentials."}), 401
-
-# REMOVED: Check auth route is no longer needed for authentication
-# @app.route('/api/check_auth', methods=['POST'])
-# @token_required
-# def check_auth(current_user_email):
-#     """Checks if the provided JWT token is valid."""
-#     return jsonify({"success": True, "message": f"Authenticated as {current_user_email}"}), 200
-
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """Returns a simple success message to indicate backend is alive."""
@@ -1013,11 +964,9 @@ def get_status():
 
 
 @app.route('/api/signal', methods=['GET'])
-# @token_required # REMOVED: No longer protected by token
 def get_signals_api():
     """Returns the latest generated signals and their states to the frontend."""
     with signals_lock: # Acquire lock before returning the global signals dictionary
-        # print(f"User {current_user_email} is requesting signals.") # Removed user email print
         return jsonify(signals)
 
 # --- Main Execution ---
