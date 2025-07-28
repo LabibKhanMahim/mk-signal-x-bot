@@ -166,7 +166,7 @@ def calculate_average_volume(volumes, lookback_period=10):
     """Calculates the average volume over a lookback period."""
     if len(volumes) < lookback_period:
         return 0.0
-    return sum(volumes[-lookback_period:]) / lookback_period
+    return sum(volumes[-lookback_period:]) / average_volume
 
 def get_candle_type(candle_data):
     """
@@ -269,8 +269,8 @@ def mk_pro_generate_signal(data, pair_symbol):
     bull_conditions_met = 0
     bear_conditions_met = 0
 
-    # User-defined CONFIDENCE_THRESHOLD
-    CONFIDENCE_THRESHOLD = 0.60
+    # User-defined CONFIDENCE_THRESHOLD - REDUCED FOR MORE SIGNALS
+    CONFIDENCE_THRESHOLD = 0.50 # Changed from 0.60 to 0.50
 
     # === Optimized Filters (Reduced unnecessary filters) ===
     # RSI Filter (Sideways Zone) - REMOVED completely as per user's request
@@ -280,8 +280,8 @@ def mk_pro_generate_signal(data, pair_symbol):
         reasons.append(f"CAUTION: Low BB Width ({(bb_width / close_price) * 100:.2f}%)")
         # Do NOT return here, continue processing. This is now a caution, not a blocker.
 
-    # Candle Body Percentage Filter: Reduced threshold to 45%
-    if current_candle_body_percentage < 45: # Changed from 55 to 45
+    # Candle Body Percentage Filter: Reduced threshold to 30% for more signals
+    if current_candle_body_percentage < 30: # Changed from 45 to 30
         reasons.append(f"FILTERED: Weak Candle Body ({current_candle_body_percentage:.2f}%)")
         return { "signal": "NONE", "confidence": "LOW", "reason": ", ".join(reasons), "reasons_list": reasons, "bull_conditions_met": 0, "bear_conditions_met": 0 }
 
@@ -310,7 +310,7 @@ def mk_pro_generate_signal(data, pair_symbol):
         bull_reasons.append(f"Volume Spike ({volume:.0f} > 1.5 * Avg {avg_volume:.0f})")
 
     # 5. Bollinger Band breakout (optional confirmation)
-    if current_candle_close > bb_upper and current_candle_body_percentage >= 45: # Use new 45% threshold
+    if current_candle_close > bb_upper and current_candle_body_percentage >= 30: # Use new 30% threshold
         bull_conditions_met += 1
         bull_reasons.append(f"BB Breakout UP (Price {current_candle_close:.4f} > BB Upper {bb_upper:.4f})")
 
@@ -345,7 +345,7 @@ def mk_pro_generate_signal(data, pair_symbol):
         bear_reasons.append(f"Volume Spike ({volume:.0f} > 1.5 * Avg {avg_volume:.0f})")
 
     # 5. BB breakout (optional confirmation)
-    if current_candle_close < bb_lower and current_candle_body_percentage >= 45: # Use new 45% threshold
+    if current_candle_close < bb_lower and current_candle_body_percentage >= 30: # Use new 30% threshold
         bear_conditions_met += 1
         bear_reasons.append(f"BB Breakout DOWN (Price {current_candle_close:.4f} < BB Lower {bb_lower:.4f})")
 
@@ -358,25 +358,24 @@ def mk_pro_generate_signal(data, pair_symbol):
 
     # === Final Signal Decision ===
     # Goal: More frequent signals with medium to high confidence.
-    # Prioritize EMA and MACD. If 2 or more conditions met, give signal.
+    # Prioritize EMA and MACD. If 1 or more conditions met, give signal for MEDIUM. If 2 or more for HIGH.
 
     # Calculate overall confidence based on conditions met
     total_possible_conditions = 6 # EMA, MACD, Volume, RSI, BB, HA (all are conditions now, no hard filters except weak candle body)
     bull_confidence_score = bull_conditions_met / total_possible_conditions
     bear_confidence_score = bear_conditions_met / total_possible_conditions
 
-    # "Focus on confidence stacking—2 or more confirmations = signal allowed."
-    # If 2 or more conditions are met AND confidence threshold is met.
-    if bull_conditions_met >= 2 and bull_confidence_score >= CONFIDENCE_THRESHOLD and bear_conditions_met < 2: # Ensure no significant opposing signals
+    # Modified logic to allow signals with at least 1 condition met for MEDIUM confidence
+    if bull_conditions_met >= 1 and bull_confidence_score >= CONFIDENCE_THRESHOLD and bear_conditions_met < 1: # Ensure no significant opposing signals
         final_signal = "UP"
-        if bull_confidence_score >= 0.8: # High confidence if 80% or more conditions met
+        if bull_conditions_met >= 2 and bull_confidence_score >= 0.8: # High confidence if 2+ conditions and 80% or more score
             final_confidence = "HIGH"
         else:
             final_confidence = "MEDIUM"
         final_reasons = bull_reasons
-    elif bear_conditions_met >= 2 and bear_confidence_score >= CONFIDENCE_THRESHOLD and bull_conditions_met < 2: # Ensure no significant opposing signals
+    elif bear_conditions_met >= 1 and bear_confidence_score >= CONFIDENCE_THRESHOLD and bull_conditions_met < 1: # Ensure no significant opposing signals
         final_signal = "DOWN"
-        if bear_confidence_score >= 0.8: # High confidence if 80% or more conditions met
+        if bear_conditions_met >= 2 and bear_confidence_score >= 0.8: # High confidence if 2+ conditions and 80% or more score
             final_confidence = "HIGH"
         else:
             final_confidence = "MEDIUM"
