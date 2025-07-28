@@ -281,6 +281,7 @@ def mk_pro_generate_signal(data, pair_symbol):
     # Candle Body Percentage Filter: Reduced threshold to 45%
     if current_candle_body_percentage < 45: # Changed from 55 to 45
         reasons.append(f"FILTERED: Weak Candle Body ({current_candle_body_percentage:.2f}%)")
+        print(f"DEBUG: {pair_symbol} - Signal filtered due to weak candle body ({current_candle_body_percentage:.2f}%).")
         return { "signal": "NONE", "confidence": "LOW", "reason": ", ".join(reasons), "reasons_list": reasons, "bull_conditions_met": 0, "bear_conditions_met": 0 }
 
 
@@ -692,6 +693,7 @@ def signal_generation_loop():
         try:
             # Re-fetch current time at the beginning of each loop iteration for accuracy
             current_time = datetime.datetime.now() 
+            print(f"\n--- Signal Loop Iteration Start ({current_time.strftime('%H:%M:%S')}) ---")
             
             # --- Step 1: Check and update expired WAITING signals and clear old results ---
             for pair in CURRENCY_PAIRS:
@@ -787,6 +789,8 @@ def signal_generation_loop():
                             signals[pair]["signals_given_count"] = signals[pair].get("signals_given_count", 0) + 1 # Initialize if not exists
                             print(f"{pair}: Signals given since last rest: {signals[pair]['signals_given_count']}")
 
+                        print(f"  {pair} - Updated state after result: {signals[pair]['current_signal']['result']}, is_resting: {signals[pair]['is_resting']}")
+
                         if signals[pair].get("signals_given_count", 0) >= 5: # Check signals_given_count
                             signals[pair]["is_resting"] = True
                             signals[pair]["rest_end_time"] = current_time + datetime.timedelta(minutes=RESTING_PERIOD_MINUTES) 
@@ -838,37 +842,47 @@ def signal_generation_loop():
                         signals[pair]["result_display_end_time"] = current_time # Clear result display cooldown
                         signals[pair]["consecutive_losses"] = 0
                         signals[pair]["forced_wins_given"] = 0
+                        print(f"  {pair} - Updated state after rest: {signals[pair]['current_signal']['result']}, is_resting: {signals[pair]['is_resting']}")
 
 
             # --- Step 2: Identify eligible pairs for new signal generation ---
             potential_signals_for_this_iteration = []
             with signals_lock: # Acquire lock before reading signals for active_waiting_signals_count
                 active_waiting_signals_count = sum(1 for p_data in signals.values() if p_data["current_signal"]["result"] == "⏳ WAITING")
+            print(f"Current active WAITING signals count: {active_waiting_signals_count} (Max: {MAX_ACTIVE_SIGNALS})")
+
 
             for pair in CURRENCY_PAIRS:
                 with signals_lock: # Acquire lock before accessing pair's signal data
                     pair_signals_data = signals[pair] # Get a reference to the pair's data
                 
+                print(f"Checking eligibility for {pair}:")
+                print(f"  is_resting: {pair_signals_data['is_resting']}")
+                print(f"  current_signal.result: {pair_signals_data['current_signal']['result']}")
+                print(f"  result_display_end_time: {pair_signals_data['result_display_end_time'].strftime('%H:%M:%S')}")
+                print(f"  current_time: {current_time.strftime('%H:%M:%S')}")
+                print(f"  last_signal_generated_at: {pair_signals_data['last_signal_generated_at'].strftime('%H:%M:%S')}")
+
                 # Check resting status (already handled in Step 1, but re-check for clarity)
                 if pair_signals_data["is_resting"]:
-                    print(f"{pair}: Still resting until {pair_signals_data['rest_end_time'].strftime('%H:%M:%S')}.")
+                    print(f"  {pair}: Still resting until {pair_signals_data['rest_end_time'].strftime('%H:%M:%S')}. Skipping.")
                     continue # Skip this pair, it's resting
 
                 # Check result display cooldown (already handled in Step 1, but re-check for clarity)
                 if pair_signals_data["current_signal"]["result"] in ["✅ WIN", "❌ LOSS"] and \
                    current_time < pair_signals_data["result_display_end_time"]:
-                    print(f"{pair}: Result '{pair_signals_data['current_signal']['result']}' is still being displayed (backend). Waiting for display cooldown to end.")
+                    print(f"  {pair}: Result '{pair_signals_data['current_signal']['result']}' is still being displayed (backend). Waiting for display cooldown to end. Skipping.")
                     continue # Skip this pair, result is still being displayed
 
                 # Check global active signals limit
                 if active_waiting_signals_count >= MAX_ACTIVE_SIGNALS: 
-                    print(f"Maximum active signals ({MAX_ACTIVE_SIGNALS}) reached. Skipping new signal generation for {pair}.")
+                    print(f"  Maximum active signals ({MAX_ACTIVE_SIGNALS}) reached. Skipping new signal generation for {pair}.")
                     continue # Skip this pair, too many active signals globally
 
                 # Check time since last signal attempt for this specific pair
                 time_since_last_attempt = current_time - pair_signals_data["last_signal_generated_at"]
                 if time_since_last_attempt.total_seconds() >= (SIGNAL_INTERVAL_MINUTES * 60): # Check every SIGNAL_INTERVAL_MINUTES
-                    print(f"Attempting to fetch candles for {pair}...")
+                    print(f"  {pair}: Eligible for new signal. Attempting to fetch candles...")
                     candles = fetch_twelvedata_candles(pair, outputsize=250) # Fetch enough candles for all indicators
                     
                     if candles:
@@ -882,13 +896,13 @@ def signal_generation_loop():
                                 "bear_conditions": new_signal.get("bear_conditions_met", 0),
                                 "confidence_level": ["LOW", "MEDIUM", "HIGH", "VERY HIGH (100000% SURE)"].index(new_signal["confidence"]) # For sorting
                             })
-                            print(f"Potential signal generated for {pair}: {new_signal}")
+                            print(f"  Potential signal generated for {pair}: {new_signal['direction']} with confidence {new_signal['confidence']}. Added to potential list.")
                         else:
                             with signals_lock: # Acquire lock before modifying signals[pair]
                                 # Update signal data even if no signal, to show "No Signal" and reason
                                 signals[pair]["current_signal"] = new_signal
                                 signals[pair]["last_signal_generated_at"] = current_time
-                                print(f"No signal generated for {pair}: {new_signal['reason']}") # This line now safe
+                                print(f"  No signal generated for {pair}: {new_signal['reason']}. Updated pair state to 'No Signal'.")
                     else:
                         with signals_lock: # Acquire lock before modifying signals[pair]
                             # Handle data fetch error for the pair
@@ -908,14 +922,15 @@ def signal_generation_loop():
                             signals[pair]["last_signal_generated_at"] = current_time
                             signals[pair]["consecutive_losses"] = 0 # Reset on data error
                             signals[pair]["forced_wins_given"] = 0 # Reset on data error
-                            print(f"Failed to fetch candles for {pair} from TwelveData API. Setting 'Data Error' status.")
+                            print(f"  Failed to fetch candles for {pair} from TwelveData API. Setting 'Data Error' status.")
                 else:
-                    print(f"{pair}: Not yet eligible for new signal (last attempt {time_since_last_attempt.total_seconds():.0f}s ago). Needs {SIGNAL_INTERVAL_MINUTES*60}s.")
+                    print(f"  {pair}: Not yet eligible for new signal (last attempt {time_since_last_attempt.total_seconds():.0f}s ago). Needs {SIGNAL_INTERVAL_MINUTES*60}s. Skipping.")
 
             # --- Step 3: Select and activate top signals from potential candidates ---
             # Sort by confidence (desc), then by number of conditions met (desc), then by analysis time (asc)
             potential_signals_for_this_iteration.sort(key=lambda x: (x["confidence_level"], max(x["bull_conditions"], x["bear_conditions"]), -x["analysis_time"].timestamp()), reverse=True)
             
+            print(f"Number of potential signals found: {len(potential_signals_for_this_iteration)}")
             signals_to_activate = []
             for potential_signal_entry in potential_signals_for_this_iteration:
                 if len(signals_to_activate) < MAX_ACTIVE_SIGNALS:
@@ -926,9 +941,11 @@ def signal_generation_loop():
                     # Ensure it's not currently WAITING for a trade and not resting
                     if current_pair_status != "⏳ WAITING" and not is_resting: 
                         signals_to_activate.append(potential_signal_entry)
+                        print(f"  Activating potential signal for {potential_signal_entry['pair']}.")
                     else:
-                        print(f"Skipping {potential_signal_entry['pair']} as it became ineligible during selection phase (status: {current_pair_status}, resting: {is_resting}).")
+                        print(f"  Skipping {potential_signal_entry['pair']} as it became ineligible during selection phase (status: {current_pair_status}, resting: {is_resting}).")
                 else:
+                    print(f"  Max active signals ({MAX_ACTIVE_SIGNALS}) reached during activation phase. Stopping.")
                     break # Max active signals reached
 
             for signal_entry in signals_to_activate:
@@ -937,11 +954,12 @@ def signal_generation_loop():
                 with signals_lock: # Acquire lock before modifying signals[pair]
                     signals[pair]["current_signal"] = new_signal
                     signals[pair]["last_signal_generated_at"] = datetime.datetime.now() 
-                print(f"Activated signal for {pair}: {new_signal}")
+                print(f"Activated signal for {pair}: {new_signal['direction']} with confidence {new_signal['confidence']}.")
             
             if not signals_to_activate and not potential_signals_for_this_iteration:
-                print("No new high-confidence signals generated in this iteration.")
+                print("No new high-confidence signals generated or activated in this iteration.")
 
+            print("--- Signal Loop Iteration End ---")
             # Sleep for a short period to allow the loop to run continuously and check for updates
             time.sleep(3) # Changed to 3 seconds for faster analysis loop
 
