@@ -347,7 +347,7 @@
         @keyframes vault-open-pulse {
             0% { transform: scale(1); text-shadow: 0 0 20px #06b6d4, 0 0 40px #06b6d4; }
             50% { transform: scale(1.1); text-shadow: 0 0 30px #06b6d4, 0 0 60px #06b6d4, 0 0 80px #a855f7; }
-            100% { transform: scale(1); text-shadow: 0 0 20px #06b6d4, 0 0 40px #06b6d4; }
+            100% { text-shadow: 0 0 20px #06b6d4, 0 0 40px #06b6d4; }
         }
 
         .vault-text {
@@ -363,7 +363,7 @@
         }
         @keyframes fade-slide-in {
             0% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
+            100% { transform: translateY(0); }
         } */
 
         /* General UI elements for Dashboard */
@@ -740,9 +740,10 @@
     </script>
 
     <script>
-        // API URL-কে 127.0.0.1 (লোকাল হোস্ট) এ পরিবর্তন করা হয়েছে।
-        // যদি আপনার ব্যাকএন্ড অন্য কোনো IP অ্যাড্রেসে চলে, তাহলে এখানে সেই IP অ্যাড্রেসটি দিন।
-        const API_URL = 'http://127.0.0.1:5000/api/signal'; 
+        // API URL-কে Render-এর পাবলিক URL-এ পরিবর্তন করুন
+        // Render-এ আপনার Flask অ্যাপ স্থাপন করার পর এই URLটি পাবেন।
+        // উদাহরণস্বরূপ: 'https://your-flask-app-name.onrender.com/api/signal'
+        const API_URL = 'https://mk-signal-x-bot-rn76.onrender.com'; 
         // const LOGIN_API_URL = 'http://127.0.0.1:5000/api/login'; // REMOVED
         // const CHECK_AUTH_API_URL = 'http://127.0.0.1:5000/api/check_auth'; // REMOVED
 
@@ -1370,7 +1371,9 @@
         // Backend Connection Status Check
         async function checkBackendStatus() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/status', { method: 'HEAD' }); // Use the status endpoint
+                // API_URL-এর বেস পাথ ব্যবহার করুন, যেমন: 'YOUR_RENDER_BACKEND_URL/api/status'
+                const statusUrl = API_URL.replace('/api/signal', '/api/status');
+                const response = await fetch(statusUrl, { method: 'HEAD' }); 
                 if (response.ok) {
                     backendStatusIndicator.classList.remove('offline');
                     backendStatusIndicator.classList.add('online');
