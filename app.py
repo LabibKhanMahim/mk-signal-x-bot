@@ -175,7 +175,7 @@ def calculate_average_volume(volumes, lookback_period=10):
     """Calculates the average volume over a lookback period."""
     if len(volumes) < lookback_period:
         return 0.0
-    return sum(volumes[-lookback_period:]) / lookback_period
+    return sum(volumes[-lookback_period:]) / sum(volumes[-lookback_period:]) if sum(volumes[-lookback_period:]) > 0 else 0.0 # Changed to avoid division by zero
 
 def get_candle_type(candle_data):
     """
@@ -249,6 +249,7 @@ def get_heikin_ashi_candles(candles):
 def mk_pro_generate_signal(data, pair_symbol):
     """
     Optimized MK PRO STRATEGY to generate faster signals with less filtering.
+    Adjusted thresholds to allow for more frequent, potentially lower confidence signals.
     """
 
     close_price = data['close_price']
@@ -278,19 +279,19 @@ def mk_pro_generate_signal(data, pair_symbol):
     bull_conditions_met = 0
     bear_conditions_met = 0
 
-    # User-defined CONFIDENCE_THRESHOLD
-    CONFIDENCE_THRESHOLD = 0.60 
+    # User-defined CONFIDENCE_THRESHOLD - Adjusted for more signals
+    CONFIDENCE_THRESHOLD_MEDIUM = 0.50 # Was 0.60
+    CONFIDENCE_THRESHOLD_HIGH = 0.70 # For high confidence signals
 
     # === Optimized Filters (Reduced unnecessary filters) ===
-    # RSI Filter (Sideways Zone) - REMOVED completely as per user's request
     # Bollinger Band Width Filter: Adjusted threshold to be less restrictive (down to 0.05%)
     bb_width = bb_upper - bb_lower
-    if close_price > 0 and (bb_width / close_price) * 100 < 0.05: # Changed from 0.2 to 0.05
+    if close_price > 0 and (bb_width / close_price) * 100 < 0.05:
         reasons.append(f"CAUTION: Low BB Width ({(bb_width / close_price) * 100:.2f}%)")
         # Do NOT return here, continue processing. This is now a caution, not a blocker.
 
     # Candle Body Percentage Filter: Reduced threshold to 45%
-    if current_candle_body_percentage < 45: # Changed from 55 to 45
+    if current_candle_body_percentage < 45:
         reasons.append(f"FILTERED: Weak Candle Body ({current_candle_body_percentage:.2f}%)")
         print(f"DEBUG: {pair_symbol} - Signal filtered due to weak candle body ({current_candle_body_percentage:.2f}%).")
         return { "signal": "NONE", "confidence": "LOW", "reason": ", ".join(reasons), "reasons_list": reasons, "bull_conditions_met": 0, "bear_conditions_met": 0 }
@@ -305,22 +306,23 @@ def mk_pro_generate_signal(data, pair_symbol):
         bull_reasons.append("EMA10 > EMA30 (Bullish Trend)")
 
     # 2. MACD histogram 3 bar rising confirmation
-    if latest_histogram > prev_histogram and prev_histogram > prev_prev_histogram and latest_histogram > 0:
+    if latest_histogram is not None and prev_histogram is not None and prev_prev_histogram is not None and \
+       latest_histogram > prev_histogram and prev_histogram > prev_prev_histogram and latest_histogram > 0:
         bull_conditions_met += 1
         bull_reasons.append("MACD Histogram Rising (3 bars) & Above 0")
 
     # 3. RSI > 63 as trend strength
-    if rsi > 63:
+    if rsi is not None and rsi > 63:
         bull_conditions_met += 1
         bull_reasons.append(f"RSI > 63 ({rsi:.2f}) (Strong Buy Pressure)")
 
     # 4. Volume spike condition (> 1.5x avg) - Prioritized
-    if volume > 1.5 * avg_volume:
+    if avg_volume > 0 and volume > 1.5 * avg_volume: # Added check for avg_volume > 0
         bull_conditions_met += 1
         bull_reasons.append(f"Volume Spike ({volume:.0f} > 1.5 * Avg {avg_volume:.0f})")
 
     # 5. Bollinger Band breakout (optional confirmation)
-    if current_candle_close > bb_upper and current_candle_body_percentage >= 45: # Use new 45% threshold
+    if bb_upper is not None and current_candle_close > bb_upper and current_candle_body_percentage >= 45:
         bull_conditions_met += 1
         bull_reasons.append(f"BB Breakout UP (Price {current_candle_close:.4f} > BB Upper {bb_upper:.4f})")
 
@@ -340,22 +342,23 @@ def mk_pro_generate_signal(data, pair_symbol):
         bear_reasons.append("EMA10 < EMA30 (Bearish Trend)")
 
     # 2. MACD histogram 3 bar falling confirmation
-    if latest_histogram < prev_histogram and prev_histogram < prev_prev_histogram and latest_histogram < 0:
+    if latest_histogram is not None and prev_histogram is not None and prev_prev_histogram is not None and \
+       latest_histogram < prev_histogram and prev_histogram < prev_prev_histogram and latest_histogram < 0:
         bear_conditions_met += 1
         bear_reasons.append("MACD Histogram Falling (3 bars) & Below 0")
 
     # 3. RSI < 37 as trend strength
-    if rsi < 37:
+    if rsi is not None and rsi < 37:
         bear_conditions_met += 1
         bear_reasons.append(f"RSI < 37 ({rsi:.2f}) (Strong Sell Pressure)")
 
     # 4. Volume spike condition (> 1.5x avg) - Prioritized
-    if volume > 1.5 * avg_volume:
+    if avg_volume > 0 and volume > 1.5 * avg_volume: # Added check for avg_volume > 0
         bear_conditions_met += 1
         bear_reasons.append(f"Volume Spike ({volume:.0f} > 1.5 * Avg {avg_volume:.0f})")
 
     # 5. BB breakout (optional confirmation)
-    if current_candle_close < bb_lower and current_candle_body_percentage >= 45: # Use new 45% threshold
+    if bb_lower is not None and current_candle_close < bb_lower and current_candle_body_percentage >= 45:
         bear_conditions_met += 1
         bear_reasons.append(f"BB Breakout DOWN (Price {current_candle_close:.4f} < BB Lower {bb_lower:.4f})")
 
@@ -375,21 +378,25 @@ def mk_pro_generate_signal(data, pair_symbol):
     bull_confidence_score = bull_conditions_met / total_possible_conditions
     bear_confidence_score = bear_conditions_met / total_possible_conditions
 
-    # "Focus on confidence stacking—2 or more confirmations = signal allowed."
-    # If 2 or more conditions are met AND confidence threshold is met.
-    if bull_conditions_met >= 2 and bull_confidence_score >= CONFIDENCE_THRESHOLD and bear_conditions_met < 2: # Ensure no significant opposing signals
+    # "Focus on confidence stacking—1 or more confirmations = signal allowed." (Relaxed from 2)
+    # If 1 or more conditions are met AND confidence threshold is met.
+    if bull_conditions_met >= 1 and bull_confidence_score >= 0.15 and bear_conditions_met < 1: # Relaxed confidence score for LOW
         final_signal = "UP"
-        if bull_confidence_score >= 0.8: # High confidence if 80% or more conditions met
+        if bull_confidence_score >= CONFIDENCE_THRESHOLD_HIGH:
             final_confidence = "HIGH"
-        else:
+        elif bull_confidence_score >= CONFIDENCE_THRESHOLD_MEDIUM:
             final_confidence = "MEDIUM"
+        else:
+            final_confidence = "LOW" # Explicitly set to LOW
         final_reasons = bull_reasons
-    elif bear_conditions_met >= 2 and bear_confidence_score >= CONFIDENCE_THRESHOLD and bull_conditions_met < 2: # Ensure no significant opposing signals
+    elif bear_conditions_met >= 1 and bear_confidence_score >= 0.15 and bull_conditions_met < 1: # Relaxed confidence score for LOW
         final_signal = "DOWN"
-        if bear_confidence_score >= 0.8: # High confidence if 80% or more conditions met
+        if bear_confidence_score >= CONFIDENCE_THRESHOLD_HIGH:
             final_confidence = "HIGH"
-        else:
+        elif bear_confidence_score >= CONFIDENCE_THRESHOLD_MEDIUM:
             final_confidence = "MEDIUM"
+        else:
+            final_confidence = "LOW" # Explicitly set to LOW
         final_reasons = bear_reasons
     else:
         final_signal = "NONE"
@@ -580,7 +587,7 @@ def analyze_and_generate_signal(symbol, candles):
             "entry_time": "N/A",
             "expiry_time": "N/A",
             "direction": "NONE",
-            "confidence": "LOW",
+            "confidence": "N/A",
             "result": "No Signal",
             "entry_price": None,
             "expiry_timestamp": 0,
